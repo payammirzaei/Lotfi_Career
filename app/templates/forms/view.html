@@ -128,6 +128,8 @@
         p, span, div, h1, h2, h3, h4, h5, h6, a, li, td, th {
             font-family: 'Vazirmatn', 'Inter', sans-serif !important;
         }
+            /* RTL forms (Persian): dropdown arrow on the left so it never covers the text */
+        select:dir(rtl){background-position:left .5rem center;padding-left:2.5rem;padding-right:.75rem}[dir="rtl"] select{background-position:left .5rem center;padding-left:2.5rem;padding-right:.75rem}
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen">
@@ -175,7 +177,7 @@
                     <img src="{{ url_for('static', filename='images/logo-EN.svg') }}" alt="Lotfi Piano Gallery" class="h-16 w-auto mx-auto">
                 </div>
                 
-                {{ form_html|safe }}
+                <div dir="auto">{{ form_html|safe }}</div>
             </div>
         </div>
     </main>

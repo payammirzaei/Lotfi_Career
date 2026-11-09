@@ -181,14 +181,9 @@ def render_form_field(field_def, form_id):
         # Extract options from template (simplified - would need more parsing)
         return f'<select name="{field_name}" id="{field_name}" class="{classes}" {required_attr}><option value="">Select an option</option></select>'
 
-    elif field_type == 'radio':
-        return f'<div class="space-y-2" data-field-name="{field_name}"></div>'
-
-    elif field_type == 'checkbox':
-        return f'<div class="space-y-2" data-field-name="{field_name}"></div>'
-
     elif field_type == 'acceptance':
-        return f'<input type="checkbox" name="{field_name}" id="{field_name}" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {required_attr} />'
+        return (f'<input type="checkbox" name="{field_name}" id="{field_name}" '
+                f'class="mt-0.5 h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" {required_attr} />')
 
     elif field_type == 'quiz':
         # Extract quiz question and answer
@@ -242,31 +237,27 @@ def render_form_field_with_options(field_def, form_id):
         html += '</select>'
         return html
 
-    elif field_type == 'radio':
-        html = '<div class="space-y-2">'
-        default_index = attrs.get('default', None)
+    elif field_type in ('radio', 'checkbox'):
+        # Selectable "chips": direction-neutral (gap, no left/right margins) so they
+        # work in RTL (Persian) and LTR forms; the whole chip is clickable.
+        is_radio = field_type == 'radio'
+        default_index = attrs.get('default') if is_radio else None
+        box_cls = ('h-4 w-4 border-gray-300 text-indigo-600 focus:ring-indigo-500'
+                   + ('' if is_radio else ' rounded'))
+        html = '<div class="flex flex-wrap gap-2">'
         for i, option in enumerate(options):
             option_id = f'{field_name}_{i}'
             checked = 'checked' if (default_index is not None and i == default_index - 1) else ''
-            html += f'''
-            <div class="flex items-center">
-                <input type="radio" name="{field_name}" id="{option_id}" value="{option}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" {checked} {required_attr if i == 0 else ""} />
-                <label for="{option_id}" class="ml-2 text-sm text-gray-700">{option}</label>
-            </div>
-            '''
-        html += '</div>'
-        return html
-
-    elif field_type == 'checkbox':
-        html = '<div class="space-y-2">'
-        for i, option in enumerate(options):
-            option_id = f'{field_name}_{i}'
-            html += f'''
-            <div class="flex items-center">
-                <input type="checkbox" name="{field_name}" id="{option_id}" value="{option}" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded" />
-                <label for="{option_id}" class="ml-2 text-sm text-gray-700">{option}</label>
-            </div>
-            '''
+            req = required_attr if (is_radio and i == 0) else ''
+            html += (
+                f'<label for="{option_id}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border '
+                f'border-gray-300 bg-white text-sm text-gray-700 cursor-pointer select-none transition '
+                f'hover:border-indigo-400 has-[:checked]:border-indigo-600 has-[:checked]:bg-indigo-50 '
+                f'has-[:checked]:text-indigo-800">'
+                f'<input type="{field_type}" name="{field_name}" id="{option_id}" value="{option}" '
+                f'class="{box_cls}" {checked} {req} />'
+                f'<span>{option}</span></label>'
+            )
         html += '</div>'
         return html
 

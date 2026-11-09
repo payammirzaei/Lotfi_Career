@@ -238,8 +238,8 @@ Option 3</textarea>
         return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
             '<script src="https://cdn.tailwindcss.com?plugins=forms"><\/script>' +
             '<style>@font-face{font-family:Vazirmatn;src:url(' + JSON.stringify(FONT_URL) + ') format("truetype");font-weight:100 900}' +
-            'body{font-family:Vazirmatn,Inter,sans-serif}</style></head>' +
-            '<body class="min-h-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 sm:p-8">' + html +
+            'body{font-family:Vazirmatn,Inter,sans-serif}select:dir(rtl){background-position:left .5rem center;padding-left:2.5rem;padding-right:.75rem}[dir="rtl"] select{background-position:left .5rem center;padding-left:2.5rem;padding-right:.75rem}</style></head>' +
+            '<body class="min-h-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 sm:p-8"><div dir="auto">' + html + '</div>' +
             '<script>document.addEventListener("submit",function(e){e.preventDefault()});' +
             'new ResizeObserver(function(){parent.postMessage({tplHeight:document.documentElement.scrollHeight},"*")}).observe(document.body);<\/script>' +
             '</body></html>';
