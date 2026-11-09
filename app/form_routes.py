@@ -4,7 +4,7 @@ Form builder and submission routes
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, send_from_directory, current_app
 from flask_login import login_required, current_user
 from app.admin import approved_required
-from app import db, limiter
+from app import db, limiter, client_ip
 from flask_wtf.csrf import generate_csrf
 from app.models import Form, FormSubmission, FormSubmissionField, SUBMISSION_STATUSES, EMPLOYMENT_TYPES
 from app.applications import can_manage, summarize, parse_date
@@ -28,6 +28,11 @@ def _render_public_form(form):
 form_bp = Blueprint('forms', __name__, url_prefix='/forms')
 
 
+def _label(field_name):
+    """'your-name' -> 'your name' for messages shown to applicants"""
+    return field_name.replace('-', ' ').replace('_', ' ').strip()
+
+
 def _apply_ad_details(form, data):
     """Optional job-ad fields shared by create/edit"""
     form.location = (data.get('location') or '').strip()[:120] or None
@@ -37,88 +42,115 @@ def _apply_ad_details(form, data):
     form.closes_at = closes.date() if closes else None
 
 
+DEFAULT_TEMPLATE = '''<div class="max-w-2xl mx-auto p-6 sm:p-8 bg-white rounded-2xl shadow-lg space-y-6">
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Full name *</label>
+    [text* full-name class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"]
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+      [email* email class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"]
+    </div>
+    <div>
+      <label class="block text-sm font-medium text-gray-700 mb-1">Phone *</label>
+      [tel* phone class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"]
+    </div>
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Resume / CV (PDF or Word) *</label>
+    [file* resume filetypes:pdf|doc|docx class="w-full text-sm"]
+  </div>
+
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-1">Why do you want to join us?</label>
+    [textarea cover-letter rows:5 class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"]
+  </div>
+
+  <div class="pt-2">
+    [submit class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition" "Submit application"]
+  </div>
+
+</div>'''
+
+
 @form_bp.route('/')
 @login_required
 @approved_required
 def index():
-    """List all forms"""
+    """List the current user's job ads (admins use the admin ads page)"""
+    if current_user.is_admin:
+        return redirect(url_for('admin.ads'))
     forms = Form.query.filter_by(user_id=current_user.id).order_by(Form.created_at.desc()).all()
     return render_template('forms/index.html', forms=forms)
+
+
+def _ad_errors(title, form_template):
+    errors = []
+    if not title:
+        errors.append('Job title is required.')
+    elif len(title) > 200:
+        errors.append('Job title must be at most 200 characters.')
+    if not form_template:
+        errors.append('The application form cannot be empty.')
+    return errors
 
 
 @form_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 @approved_required
 def create():
-    """Create a new form"""
+    """Create a new job ad"""
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
         form_template = request.form.get('form_template', '').strip()
 
-        if not title or not form_template:
-            flash('Title and form template are required.', 'error')
-            return render_template('forms/create.html')
-        if len(title) > 200:
-            flash('Title must be at most 200 characters.', 'error')
-            return render_template('forms/create.html')
+        errors = _ad_errors(title, form_template)
+        if errors:
+            for error in errors:
+                flash(error, 'error')
+            # keep everything the user typed
+            return render_template('forms/create.html', default_template=form_template)
 
         form = Form(
             title=title,
             description=description,
             form_template=form_template,
-            user_id=current_user.id
+            user_id=current_user.id,
+            is_active=True,
         )
         _apply_ad_details(form, request.form)
 
         try:
             db.session.add(form)
             db.session.commit()
-            flash('Form created successfully!', 'success')
-            return redirect(url_for('forms.edit', form_id=form.id))
-        except Exception as e:
+        except Exception:
             db.session.rollback()
-            flash('An error occurred while creating the form.', 'error')
-            return render_template('forms/create.html')
+            log.exception('Error creating job ad')
+            flash('An error occurred while creating the job ad. Please try again.', 'error')
+            return render_template('forms/create.html', default_template=form_template)
 
-    # Default template
-    default_template = '''<div class="max-w-2xl mx-auto p-6 bg-white rounded-2xl shadow-lg space-y-6">
+        flash(f'Job ad "{form.title}" created and published.', 'success')
+        if current_user.is_admin:
+            return redirect(url_for('admin.ads'))
+        return redirect(url_for('forms.index'))
 
-  <!-- Name -->
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">
-      Full Name
-    </label>
-    [text* your-name class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"]
-  </div>
-
-  <!-- Email -->
-  <div>
-    <label class="block text-sm font-medium text-gray-700 mb-1">
-      Email Address
-    </label>
-    [email* your-email class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"]
-  </div>
-
-  <!-- Submit -->
-  <div class="pt-4">
-    [submit class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition" "Send Message"]
-  </div>
-
-</div>'''
-
-    return render_template('forms/create.html', default_template=default_template)
+    return render_template('forms/create.html', default_template=DEFAULT_TEMPLATE)
 
 
 @form_bp.route('/<int:form_id>/edit', methods=['GET', 'POST'])
 @login_required
 @approved_required
 def edit(form_id):
-    """Edit a form"""
+    """Edit a job ad"""
     form = Form.query.get_or_404(form_id)
 
     if not can_manage(form):
-        flash('You do not have permission to edit this form.', 'error')
+        flash('You do not have permission to edit this job ad.', 'error')
         return redirect(url_for('forms.index'))
 
     if request.method == 'POST':
@@ -128,18 +160,23 @@ def edit(form_id):
         form.is_active = request.form.get('is_active') == '1'
         _apply_ad_details(form, request.form)
 
-        if not form.title or not form.form_template or len(form.title) > 200:
+        errors = _ad_errors(form.title, form.form_template)
+        if errors:
+            for error in errors:
+                flash(error, 'error')
+            # render with the unsaved edits, then discard them
+            with db.session.no_autoflush:
+                html = render_template('forms/edit.html', form=form)
             db.session.rollback()
-            flash('Title (max 200 characters) and form template are required.', 'error')
-            return render_template('forms/edit.html', form=form)
+            return html
 
         try:
             db.session.commit()
-            flash('Form updated successfully!', 'success')
+            flash('Job ad saved.', 'success')
             return redirect(url_for('forms.edit', form_id=form.id))
         except Exception as e:
             db.session.rollback()
-            flash('An error occurred while updating the form.', 'error')
+            flash('An error occurred while saving the job ad.', 'error')
             return render_template('forms/edit.html', form=form)
 
     return render_template('forms/edit.html', form=form)
@@ -154,6 +191,13 @@ def view(form_id):
         return render_template('forms/closed.html', form=form), 410
 
     return render_template('forms/view.html', form=form, form_html=_render_public_form(form))
+
+
+@form_bp.route('/<int:form_id>/thanks')
+def thanks(form_id):
+    """Confirmation page shown after a successful application"""
+    form = Form.query.get_or_404(form_id)
+    return render_template('forms/thanks.html', form=form)
 
 
 @form_bp.route('/<int:form_id>/submit', methods=['POST'])
@@ -174,9 +218,9 @@ def submit(form_id):
     for field_name, field_def in required_fields.items():
         if field_def['type'] == 'file':
             if field_name not in request.files or not request.files[field_name].filename:
-                errors.append(f'{field_name} is required.')
+                errors.append(f'Please attach {_label(field_name)}.')
         elif field_name not in request.form or not request.form[field_name].strip():
-            errors.append(f'{field_name} is required.')
+            errors.append(f'Please fill in {_label(field_name)}.')
 
     # Validate quiz fields
     quiz_fields = [f for f in fields if f.get('type') == 'quiz']
@@ -199,7 +243,7 @@ def submit(form_id):
     # Create submission
     submission = FormSubmission(
         form_id=form.id,
-        ip_address=(request.remote_addr or '')[:45],
+        ip_address=client_ip(),
         user_agent=request.headers.get('User-Agent', '')[:255]
     )
     db.session.add(submission)
@@ -280,8 +324,7 @@ def submit(form_id):
 
     try:
         db.session.commit()
-        flash('Form submitted successfully!', 'success')
-        return redirect(url_for('forms.view', form_id=form.id))
+        return redirect(url_for('forms.thanks', form_id=form.id))
     except Exception:
         db.session.rollback()
         log.exception('Error saving submission for form %s', form.id)

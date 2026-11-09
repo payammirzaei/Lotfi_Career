@@ -23,6 +23,15 @@ def validate_password(password):
     return 8 <= len(password) <= 128
 
 
+def home_for(user):
+    """Where a user lands after login"""
+    if user.is_admin:
+        return url_for('admin.dashboard')
+    if user.is_approved:
+        return url_for('forms.index')
+    return url_for('admin.pending_approval')
+
+
 def is_safe_redirect(target):
     """Only allow relative, same-site redirect targets (prevents open redirects)"""
     if not target or '\\' in target:
@@ -35,7 +44,7 @@ def is_safe_redirect(target):
 def register():
     """User registration"""
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(home_for(current_user))
     
     if request.method == 'POST':
         name = request.form.get('name', '').strip()
@@ -120,7 +129,7 @@ def register():
 def login():
     """User login"""
     if current_user.is_authenticated:
-        return redirect(url_for('main.index'))
+        return redirect(home_for(current_user))
     
     if request.method == 'POST':
         email = request.form.get('email', '').strip().lower()
@@ -147,7 +156,7 @@ def login():
             flash(f'Welcome back, {user.username}!', 'success')
             if is_safe_redirect(next_page):
                 return redirect(next_page)
-            return redirect(url_for('main.index'))
+            return redirect(home_for(user))
         else:
             flash('Invalid email or password.', 'error')
             return render_template('auth/login.html', email=email)
@@ -159,8 +168,9 @@ def login():
 @login_required
 def logout():
     """User logout"""
-    logout_user()
+    # clear first: logout_user() then marks the remember-me cookie for deletion
     session.clear()
+    logout_user()
     flash('You have been logged out successfully.', 'info')
     return redirect(url_for('main.index'))
 

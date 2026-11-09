@@ -9,7 +9,6 @@ from datetime import datetime
 
 from flask import Flask
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
@@ -21,12 +20,33 @@ from config import Config
 db = SQLAlchemy()
 migrate = Migrate()
 csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address)
+
+
+def client_ip():
+    """Real visitor IP.
+
+    Behind a platform proxy (Railway, Liara, Cloudflare...) remote_addr can be
+    the proxy's own address, which changes between requests and is shared by
+    all visitors. Set CLIENT_IP_HEADER to the header the platform overwrites
+    with the client address (e.g. X-Real-IP on Railway).
+    """
+    from flask import current_app, request
+    header = current_app.config.get('CLIENT_IP_HEADER')
+    if header:
+        value = (request.headers.get(header) or '').split(',')[0].strip()
+        if value:
+            return value[:45]
+    return (request.remote_addr or '')[:45]
+
+
+limiter = Limiter(key_func=client_ip)
 login_manager = LoginManager()
 login_manager.login_view = 'admin.login'
 login_manager.login_message = 'Please log in to access this page.'
 login_manager.login_message_category = 'info'
-login_manager.session_protection = 'strong'
+# 'basic' (Flask-Login default): 'strong' logged users out whenever the proxy
+# address in front of the app changed, e.g. mid-way through filling in a form.
+login_manager.session_protection = 'basic'
 
 MIGRATIONS_DIR = os.path.join(os.path.abspath(os.path.dirname(__file__)), '..', 'migrations')
 _MIGRATION_LOCK_ID = 74210931  # arbitrary constant for pg_advisory_lock
@@ -148,6 +168,15 @@ def create_app(config_class=Config):
             return json.loads(value)
         except (json.JSONDecodeError, TypeError):
             return value
+
+    if app.config.get('LOG_PROXY_HEADERS'):
+        @app.before_request
+        def _log_proxy_headers():
+            from flask import request
+            app.logger.warning('proxy headers: remote_addr=%s XFF=%r X-Real-IP=%r CF=%r Host=%r XFH=%r',
+                               request.remote_addr, request.headers.get('X-Forwarded-For'),
+                               request.headers.get('X-Real-IP'), request.headers.get('CF-Connecting-IP'),
+                               request.headers.get('Host'), request.headers.get('X-Forwarded-Host'))
 
     @app.after_request
     def set_security_headers(response):

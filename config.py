@@ -64,6 +64,9 @@ class Config:
 
     # Number of reverse proxies in front of the app (for correct client IP / https detection)
     PROXY_FIX_COUNT = int(os.environ.get('PROXY_FIX_COUNT', '1'))
+    # Header the hosting platform sets to the real visitor IP (e.g. X-Real-IP). Empty = remote_addr.
+    CLIENT_IP_HEADER = os.environ.get('CLIENT_IP_HEADER', '').strip()
+    LOG_PROXY_HEADERS = _env_bool('LOG_PROXY_HEADERS', False)
 
     # Rate limiting (per worker process unless RATELIMIT_STORAGE_URI points at Redis)
     RATELIMIT_STORAGE_URI = os.environ.get('RATELIMIT_STORAGE_URI', 'memory://')

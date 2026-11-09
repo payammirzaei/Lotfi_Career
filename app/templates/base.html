@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="{% block meta_description %}Lotfi Piano Gallery{% endblock %}">
     <title>{% block title %}Lotfi Piano Gallery{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/logo-EN.svg') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -154,7 +155,7 @@
                         </a>
                         {% if current_user.is_authenticated and current_user.is_approved %}
                         <a href="{{ url_for('forms.index') }}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors duration-200">
-                            Forms
+                            {{ 'Job ads' if current_user.is_admin else 'My job ads' }}
                         </a>
                         {% endif %}
                         {% if current_user.is_authenticated and current_user.is_admin %}
@@ -162,6 +163,9 @@
                             Admin
                         </a>
                         {% endif %}
+                        <a href="{{ url_for('main.index') }}#jobs" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors duration-200">
+                            Careers
+                        </a>
                         <a href="{{ url_for('main.about') }}" class="inline-flex items-center px-1 pt-1 border-b-2 border-transparent text-sm font-medium text-gray-500 hover:text-gray-700 hover:border-gray-300 transition-colors duration-200">
                             About
                         </a>
@@ -200,11 +204,12 @@
             <div class="pt-2 pb-3 space-y-1 px-4">
                 <a href="{{ url_for('main.index') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Home</a>
                 {% if current_user.is_authenticated and current_user.is_approved %}
-                <a href="{{ url_for('forms.index') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Forms</a>
+                <a href="{{ url_for('forms.index') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">{{ 'Job ads' if current_user.is_admin else 'My job ads' }}</a>
                 {% endif %}
                 {% if current_user.is_authenticated and current_user.is_admin %}
                 <a href="{{ url_for('admin.dashboard') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Admin</a>
                 {% endif %}
+                <a href="{{ url_for('main.index') }}#jobs" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">Careers</a>
                 <a href="{{ url_for('main.about') }}" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-gray-900 hover:bg-gray-50">About</a>
                 {% if current_user.is_authenticated %}
                     <div class="pt-4 pb-3 border-t border-gray-200">
@@ -224,6 +229,7 @@
     </nav>
 
     <!-- Flash Messages -->
+    {% block flashes %}
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
@@ -257,6 +263,7 @@
             </div>
         {% endif %}
     {% endwith %}
+    {% endblock %}
 
     <!-- Main Content -->
     <main class="flex-grow">

@@ -11,9 +11,54 @@
             <p class="text-xl text-gray-300 max-w-3xl mx-auto">
                 Since 2011, Lotfi Piano Collection has specialized in wholesale piano distribution. We offer a comprehensive inventory of digital, acoustic upright, and grand pianos from various brands, ensuring we meet the needs of every enthusiast, from beginner musicians to seasoned professionals.
             </p>
+            <a href="#jobs" class="inline-flex items-center gap-2 mt-8 px-6 py-3 rounded-lg bg-white text-gray-900 font-semibold hover:bg-gray-100 transition">
+                <i class="fas fa-briefcase"></i> View open positions{% if jobs %} ({{ jobs|length }}){% endif %}
+            </a>
         </div>
     </div>
 </div>
+
+<!-- Open positions -->
+<section id="jobs" class="bg-gray-50 py-16 scroll-mt-4">
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-10">
+            <h2 class="text-3xl sm:text-4xl font-bold text-gray-900">Open positions</h2>
+            <p class="text-gray-600 mt-3">Join our team. Pick a role below and apply online in a few minutes.</p>
+        </div>
+
+        {% if jobs %}
+        <ul class="space-y-4">
+            {% for job in jobs %}
+            <li>
+                <a href="{{ url_for('forms.view', form_id=job.id) }}"
+                   class="group flex flex-col sm:flex-row sm:items-center gap-4 bg-white rounded-2xl border border-gray-200 p-6 hover:border-indigo-300 hover:shadow-md transition">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-lg font-semibold text-gray-900 group-hover:text-indigo-700">{{ job.title }}</h3>
+                        {% if job.description %}
+                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">{{ job.description }}</p>
+                        {% endif %}
+                        <div class="flex flex-wrap gap-2 mt-3 text-xs">
+                            {% if job.location %}<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700"><i class="fas fa-location-dot"></i>{{ job.location }}</span>{% endif %}
+                            {% if job.employment_type %}<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-gray-100 text-gray-700"><i class="fas fa-briefcase"></i>{{ job.employment_type }}</span>{% endif %}
+                            {% if job.closes_at %}<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 text-amber-800"><i class="fas fa-hourglass-half"></i>Apply by {{ job.closes_at.strftime('%b %d, %Y') }}</span>{% endif %}
+                        </div>
+                    </div>
+                    <span class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold group-hover:bg-indigo-700 flex-shrink-0">
+                        Apply <i class="fas fa-arrow-right"></i>
+                    </span>
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <div class="bg-white rounded-2xl border border-dashed border-gray-300 p-10 text-center">
+            <i class="fas fa-briefcase text-3xl text-gray-300 mb-3"></i>
+            <p class="text-gray-700 font-medium">There are no open positions right now.</p>
+            <p class="text-sm text-gray-500 mt-1">Please check back soon.</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
 
 <!-- Stats Section -->
 <div class="bg-white py-16">

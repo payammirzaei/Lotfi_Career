@@ -1,11 +1,14 @@
-{# Job-ad details shared by create/edit. `form` is the Form model on edit, undefined on create. #}
+{# Job-ad details shared by create/edit. `form` is the Form model on edit; on create, re-show posted values. #}
+{% set ad_location = form.location if form is defined else request.form.get('location') %}
+{% set ad_type = form.employment_type if form is defined else request.form.get('employment_type') %}
+{% set ad_closes = (form.closes_at.isoformat() if form.closes_at else '') if form is defined else request.form.get('closes_at', '') %}
 <fieldset class="rounded-lg border border-gray-200 p-4">
     <legend class="px-1 text-sm font-medium text-gray-700">Job ad details <span class="font-normal text-gray-400">(optional)</span></legend>
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
             <label for="location" class="block text-sm text-gray-600 mb-1">Location</label>
             <input type="text" id="location" name="location" maxlength="120"
-                   value="{{ form.location if form is defined and form.location else '' }}" placeholder="e.g. Tehran"
+                   value="{{ ad_location or '' }}" placeholder="e.g. Tehran"
                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
         </div>
         <div>
@@ -14,14 +17,14 @@
                     class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
                 <option value="">—</option>
                 {% for t in EMPLOYMENT_TYPES %}
-                <option value="{{ t }}" {% if form is defined and form.employment_type == t %}selected{% endif %}>{{ t }}</option>
+                <option value="{{ t }}" {% if ad_type == t %}selected{% endif %}>{{ t }}</option>
                 {% endfor %}
             </select>
         </div>
         <div>
             <label for="closes_at" class="block text-sm text-gray-600 mb-1">Closing date</label>
             <input type="date" id="closes_at" name="closes_at"
-                   value="{{ form.closes_at.isoformat() if form is defined and form.closes_at else '' }}"
+                   value="{{ ad_closes or '' }}"
                    class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
             <p class="text-xs text-gray-400 mt-1">The ad closes automatically after this day.</p>
         </div>

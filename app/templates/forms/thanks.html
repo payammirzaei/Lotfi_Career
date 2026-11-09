@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application received · {{ form.title }}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/logo-EN.svg') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @font-face { font-family: 'Vazirmatn'; src: url('{{ url_for("static", filename="fonts/variable/Vazirmatn[wght].ttf") }}') format('truetype'); font-weight: 100 900; font-display: swap; }
+        body { font-family: 'Vazirmatn', sans-serif; }
+    </style>
+</head>
+<body class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center px-4">
+    <div class="max-w-md w-full text-center">
+        <img src="{{ url_for('static', filename='images/logo-EN.svg') }}" alt="Lotfi Piano Gallery" class="h-14 w-auto mx-auto mb-8">
+        <div class="bg-white rounded-2xl shadow-lg p-8">
+            <span class="inline-flex w-14 h-14 rounded-full bg-green-100 items-center justify-center mb-4"><i class="fas fa-check text-2xl text-green-600"></i></span>
+            <h1 class="text-xl font-semibold text-gray-900">Thank you for applying!</h1>
+            <p class="text-gray-600 mt-2">We have received your application for <strong>{{ form.title }}</strong>. Our team will review it and contact you if your profile is a good fit.</p>
+            <a href="{{ url_for('main.index') }}#jobs" class="inline-flex items-center gap-2 mt-6 px-5 py-2.5 rounded-lg bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700">
+                <i class="fas fa-briefcase"></i> See other open positions
+            </a>
+        </div>
+    </div>
+</body>
+</html>
