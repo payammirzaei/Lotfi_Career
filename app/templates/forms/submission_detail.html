@@ -1,88 +1,145 @@
 {% extends "base.html" %}
+{% from "admin/_macros.html" import status_badge with context %}
 
-{% block title %}Submission #{{ submission.id }} - Flask App{% endblock %}
+{% block title %}{{ summary.name }} · {{ form.title }}{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <div class="flex justify-between items-center mb-6">
-        <div>
-            <h1 class="text-3xl font-bold text-gray-900">Submission #{{ submission.id }}</h1>
-            <p class="text-gray-600 mt-1">{{ form.title }}</p>
-        </div>
-        <div class="flex space-x-2">
-            <a href="{{ url_for('forms.submissions', form_id=form.id) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200">
-                <i class="fas fa-arrow-left mr-2"></i>Back to Submissions
-            </a>
-            <form method="POST" 
-                  action="{{ url_for('forms.delete_submission', form_id=form.id, submission_id=submission.id) }}" 
-                  class="inline"
-                  onsubmit="return confirm('Are you sure you want to delete this submission? This will also delete all attached files. This action cannot be undone.');">
-<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" 
-                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200">
-                    <i class="fas fa-trash mr-2"></i>Delete Submission
-                </button>
-            </form>
+{% set back_url = url_for('admin.applications', ad=form.id) if current_user.is_admin else url_for('forms.submissions', form_id=form.id) %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <!-- Top bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <a href="{{ back_url }}" class="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900">
+            <i class="fas fa-arrow-left"></i> Back to applications
+        </a>
+        <div class="flex items-center gap-2">
+            <a {% if newer %}href="{{ url_for('forms.submission_detail', form_id=form.id, submission_id=newer.id) }}"{% endif %}
+               class="px-3 py-1.5 rounded-lg border text-sm {% if newer %}border-gray-300 bg-white text-gray-700 hover:bg-gray-50{% else %}border-gray-200 text-gray-300 pointer-events-none{% endif %}"
+               title="Newer application"><i class="fas fa-chevron-left mr-1"></i>Newer</a>
+            <a {% if older %}href="{{ url_for('forms.submission_detail', form_id=form.id, submission_id=older.id) }}"{% endif %}
+               class="px-3 py-1.5 rounded-lg border text-sm {% if older %}border-gray-300 bg-white text-gray-700 hover:bg-gray-50{% else %}border-gray-200 text-gray-300 pointer-events-none{% endif %}"
+               title="Older application">Older<i class="fas fa-chevron-right ml-1"></i></a>
         </div>
     </div>
-    
-    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Submission Details</h2>
-        <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
-                <dt class="text-sm font-medium text-gray-500">Submitted At</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
-            </div>
-            <div>
-                <dt class="text-sm font-medium text-gray-500">IP Address</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ submission.ip_address or 'N/A' }}</dd>
-            </div>
-            {% if submission.user_agent %}
-            <div class="sm:col-span-2">
-                <dt class="text-sm font-medium text-gray-500">User Agent</dt>
-                <dd class="mt-1 text-sm text-gray-900">{{ submission.user_agent }}</dd>
+
+    <!-- Header -->
+    <div class="flex flex-wrap items-center gap-4 mb-6">
+        <span class="w-14 h-14 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xl font-semibold">{{ summary.name[:1]|upper }}</span>
+        <div class="min-w-0">
+            <h1 class="text-2xl font-bold text-gray-900 truncate">{{ summary.name }}</h1>
+            <p class="text-sm text-gray-500">
+                Applied for <span class="font-medium text-gray-700">{{ form.title }}</span>
+                · {{ submission.submitted_at.strftime('%b %d, %Y at %H:%M') }} · #{{ submission.id }}
+            </p>
+        </div>
+        <div class="ml-auto">{{ status_badge(submission.status) }}</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- Answers -->
+        <div class="lg:col-span-2 space-y-6">
+            {% if summary.email or summary.phone %}
+            <div class="flex flex-wrap gap-3">
+                {% if summary.email %}
+                <a href="mailto:{{ summary.email }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:border-indigo-300">
+                    <i class="fas fa-envelope text-gray-400"></i>{{ summary.email }}
+                </a>
+                {% endif %}
+                {% if summary.phone %}
+                <a href="tel:{{ summary.phone }}" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-sm text-gray-700 hover:border-indigo-300">
+                    <i class="fas fa-phone text-gray-400"></i>{{ summary.phone }}
+                </a>
+                {% endif %}
             </div>
             {% endif %}
-        </dl>
-    </div>
-    
-    <div class="bg-white rounded-lg shadow-lg p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">Form Data</h2>
-        <dl class="space-y-4">
-            {% for field in submission.fields %}
-            <div class="border-b border-gray-200 pb-4 last:border-0">
-                <dt class="text-sm font-medium text-gray-500 mb-1">
-                    {{ field.field_name|replace('-', ' ')|replace('_', ' ')|title }}
-                </dt>
-                <dd class="text-sm text-gray-900">
-                    {% if field.file_path %}
-                        <div class="flex items-center space-x-2">
-                            <i class="fas fa-file text-indigo-600"></i>
-                            <span>{{ field.file_name }}</span>
-                            <a href="{{ url_for('uploaded_file', filename=field.file_path) }}" 
-                               target="_blank"
-                               class="text-indigo-600 hover:text-indigo-800 ml-2">
-                                <i class="fas fa-download"></i> Download
-                            </a>
-                        </div>
+
+            <div class="bg-white rounded-xl border border-gray-200">
+                <h2 class="px-5 py-4 border-b border-gray-100 text-sm font-semibold text-gray-900">Answers</h2>
+                <dl class="divide-y divide-gray-100">
+                    {% for field in submission.fields %}
+                    <div class="px-5 py-4 sm:grid sm:grid-cols-3 sm:gap-4">
+                        <dt class="text-sm font-medium text-gray-500">{{ field.field_name|replace('-', ' ')|replace('_', ' ')|title }}</dt>
+                        <dd class="mt-1 sm:mt-0 sm:col-span-2 text-sm text-gray-900 break-words">
+                            {% if field.file_path %}
+                                <a href="{{ url_for('uploaded_file', filename=field.file_path) }}" target="_blank" rel="noopener"
+                                   class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50">
+                                    <i class="fas fa-file-arrow-down text-indigo-600"></i>
+                                    <span class="truncate max-w-xs">{{ field.file_name }}</span>
+                                </a>
+                            {% else %}
+                                {% set json_value = field.field_value|from_json %}
+                                {% if json_value is iterable and json_value is not string %}
+                                    <div class="flex flex-wrap gap-1.5">
+                                        {% for value in json_value %}<span class="px-2 py-0.5 rounded-md bg-gray-100 text-gray-700">{{ value }}</span>{% endfor %}
+                                    </div>
+                                {% else %}
+                                    {{ field.field_value|nl2br|safe if field.field_value else '—' }}
+                                {% endif %}
+                            {% endif %}
+                        </dd>
+                    </div>
                     {% else %}
-                        {% set json_value = field.field_value|from_json %}
-                        {% if json_value is iterable and json_value is not string %}
-                            <ul class="list-disc list-inside">
-                                {% for value in json_value %}
-                                <li>{{ value }}</li>
-                                {% endfor %}
-                            </ul>
-                        {% else %}
-                            {{ field.field_value|nl2br|safe if field.field_value else 'N/A' }}
-                        {% endif %}
-                    {% endif %}
-                </dd>
+                    <p class="px-5 py-6 text-sm text-gray-500">No answers recorded.</p>
+                    {% endfor %}
+                </dl>
             </div>
-            {% endfor %}
-        </dl>
+        </div>
+
+        <!-- Review panel -->
+        <div class="space-y-6">
+            <form method="POST" action="{{ url_for('forms.review_submission', form_id=form.id, submission_id=submission.id) }}"
+                  class="bg-white rounded-xl border border-gray-200 p-5 lg:sticky lg:top-6">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <h2 class="text-sm font-semibold text-gray-900 mb-3">Review</h2>
+
+                <fieldset class="grid grid-cols-2 gap-2 mb-4">
+                    <legend class="sr-only">Status</legend>
+                    {% for key, (label, badge, dot) in SUBMISSION_STATUSES.items() %}
+                    <label class="cursor-pointer">
+                        <input type="radio" name="status" value="{{ key }}" class="peer sr-only" {% if submission.status == key %}checked{% endif %}>
+                        <span class="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm text-gray-700
+                                     peer-checked:border-indigo-500 peer-checked:bg-indigo-50 peer-checked:text-indigo-800 peer-focus-visible:ring-2 peer-focus-visible:ring-indigo-500 hover:bg-gray-50">
+                            <span class="w-2 h-2 rounded-full {{ dot }}"></span>{{ label }}
+                        </span>
+                    </label>
+                    {% endfor %}
+                </fieldset>
+
+                <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Internal notes</label>
+                <textarea id="notes" name="notes" rows="5" maxlength="5000"
+                          placeholder="Only visible to your team…"
+                          class="w-full rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">{{ submission.notes or '' }}</textarea>
+
+                <div class="flex gap-2 mt-4">
+                    <button type="submit" class="flex-1 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Save</button>
+                    {% if older %}
+                    <button type="submit" name="next" value="{{ url_for('forms.submission_detail', form_id=form.id, submission_id=older.id) }}"
+                            class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50" title="Save and open the next application">
+                        Save &amp; next
+                    </button>
+                    {% endif %}
+                </div>
+
+                {% if submission.reviewed_at %}
+                <p class="text-xs text-gray-400 mt-3">
+                    Last updated {{ submission.reviewed_at.strftime('%b %d, %Y %H:%M') }}{% if submission.reviewed_by %} by {{ submission.reviewed_by.username }}{% endif %}
+                </p>
+                {% endif %}
+            </form>
+
+            <div class="bg-white rounded-xl border border-gray-200 p-5 text-sm">
+                <h2 class="font-semibold text-gray-900 mb-3">Details</h2>
+                <dl class="space-y-2 text-gray-600">
+                    <div class="flex justify-between gap-4"><dt>IP address</dt><dd class="text-gray-900 font-mono text-xs">{{ submission.ip_address or '—' }}</dd></div>
+                    {% if submission.user_agent %}<div><dt>Device</dt><dd class="text-gray-900 text-xs mt-0.5 break-words">{{ submission.user_agent }}</dd></div>{% endif %}
+                </dl>
+                <form method="POST" action="{{ url_for('forms.delete_submission', form_id=form.id, submission_id=submission.id) }}"
+                      class="mt-4 pt-4 border-t border-gray-100"
+                      onsubmit="return confirm('Delete this application and its attached files? This cannot be undone.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="text-sm text-rose-600 hover:text-rose-800"><i class="fas fa-trash mr-1"></i>Delete application</button>
+                </form>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
-
-

@@ -1,0 +1,121 @@
+{% extends "admin/_layout.html" %}
+{% from "admin/_macros.html" import ad_state with context %}
+
+{% block title %}Job ads · Admin{% endblock %}
+
+{% block admin_content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Job ads</h1>
+        <p class="text-sm text-gray-500 mt-1">Create, publish and track your openings</p>
+    </div>
+    <a href="{{ url_for('forms.create') }}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">
+        <i class="fas fa-plus"></i> New job ad
+    </a>
+</div>
+
+<!-- Filters -->
+<div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div class="inline-flex rounded-lg border border-gray-200 bg-white p-1 text-sm">
+        {% for key, label in [('all', 'All'), ('open', 'Open'), ('closed', 'Closed')] %}
+        <a href="{{ url_for('admin.ads', show=key, q=q or None) }}"
+           class="px-3 py-1.5 rounded-md font-medium {% if show == key %}bg-gray-900 text-white{% else %}text-gray-600 hover:text-gray-900{% endif %}">{{ label }}</a>
+        {% endfor %}
+    </div>
+    <form method="GET" class="relative">
+        <input type="hidden" name="show" value="{{ show }}">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="search" name="q" value="{{ q }}" placeholder="Search ads…"
+               class="pl-9 pr-3 py-2 w-64 max-w-full rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+    </form>
+</div>
+
+{% if forms %}
+<div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div class="overflow-x-auto">
+        <table class="min-w-full text-sm">
+            <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                <tr>
+                    <th class="px-5 py-3 text-left font-medium">Ad</th>
+                    <th class="px-5 py-3 text-left font-medium">Status</th>
+                    <th class="px-5 py-3 text-right font-medium">Applications</th>
+                    <th class="px-5 py-3 text-left font-medium">Last applied</th>
+                    <th class="px-5 py-3 text-left font-medium">Closes</th>
+                    <th class="px-5 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for f in forms %}
+                {% set st = ad_stats.get(f.id, (0, 0, None)) %}
+                <tr class="hover:bg-gray-50/60">
+                    <td class="px-5 py-4">
+                        <a href="{{ url_for('forms.edit', form_id=f.id) }}" class="font-medium text-gray-900 hover:text-indigo-700">{{ f.title }}</a>
+                        <div class="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3">
+                            {% if f.location %}<span><i class="fas fa-location-dot mr-1"></i>{{ f.location }}</span>{% endif %}
+                            {% if f.employment_type %}<span><i class="fas fa-briefcase mr-1"></i>{{ f.employment_type }}</span>{% endif %}
+                            <span>by {{ f.user.username }}</span>
+                        </div>
+                    </td>
+                    <td class="px-5 py-4">{{ ad_state(f) }}</td>
+                    <td class="px-5 py-4 text-right">
+                        <a href="{{ url_for('admin.applications', ad=f.id) }}" class="font-semibold text-gray-900 hover:text-indigo-700 tabular-nums">{{ st[0] }}</a>
+                        {% if st[1] %}<a href="{{ url_for('admin.applications', ad=f.id, status='new') }}" class="ml-1 px-1.5 py-0.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-800">{{ st[1] }} new</a>{% endif %}
+                    </td>
+                    <td class="px-5 py-4 text-gray-500 whitespace-nowrap">{{ st[2].strftime('%b %d, %Y') if st[2] else '—' }}</td>
+                    <td class="px-5 py-4 text-gray-500 whitespace-nowrap">{{ f.closes_at.strftime('%b %d, %Y') if f.closes_at else 'No deadline' }}</td>
+                    <td class="px-5 py-4">
+                        <div class="flex items-center justify-end gap-1">
+                            <button type="button" title="Copy public link"
+                                    data-copy="{{ url_for('forms.view', form_id=f.id, _external=True) }}"
+                                    class="copy-link w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"><i class="fas fa-link"></i></button>
+                            <a href="{{ url_for('forms.view', form_id=f.id) }}" target="_blank" rel="noopener" title="Open public page"
+                               class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"><i class="fas fa-arrow-up-right-from-square"></i></a>
+                            <a href="{{ url_for('forms.edit', form_id=f.id) }}" title="Edit"
+                               class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"><i class="fas fa-pen"></i></a>
+                            <form method="POST" action="{{ url_for('admin.duplicate_ad', form_id=f.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" title="Duplicate"
+                                        class="w-8 h-8 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900"><i class="fas fa-clone"></i></button>
+                            </form>
+                            <form method="POST" action="{{ url_for('admin.toggle_ad', form_id=f.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="next" value="{{ request.full_path }}">
+                                <button type="submit" title="{{ 'Deactivate' if f.is_active else 'Activate' }}"
+                                        class="w-8 h-8 rounded-lg hover:bg-gray-100 {{ 'text-green-600' if f.is_active else 'text-gray-400' }}">
+                                    <i class="fas {{ 'fa-toggle-on' if f.is_active else 'fa-toggle-off' }} text-lg"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<div class="bg-white rounded-xl border border-dashed border-gray-300 px-6 py-16 text-center">
+    <i class="fas fa-bullhorn text-4xl text-gray-300 mb-4"></i>
+    <h3 class="text-base font-semibold text-gray-900">{{ 'No ads match your filters' if q or show != 'all' else 'No job ads yet' }}</h3>
+    <p class="text-sm text-gray-500 mt-1 mb-6">Create an ad, share its link, and applications will show up here.</p>
+    <a href="{{ url_for('forms.create') }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">
+        <i class="fas fa-plus"></i> New job ad
+    </a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.copy-link').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var icon = btn.querySelector('i');
+        navigator.clipboard.writeText(btn.dataset.copy).then(function () {
+            icon.className = 'fas fa-check text-green-600';
+            setTimeout(function () { icon.className = 'fas fa-link'; }, 1500);
+        });
+    });
+});
+</script>
+{% endblock %}

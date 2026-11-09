@@ -1,7 +1,7 @@
 """
 Database models
 """
-from datetime import datetime
+from datetime import datetime, date
 from flask_login import UserMixin
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -35,6 +35,19 @@ class User(UserMixin, db.Model):
         return f'<User {self.username}>'
 
 
+# Review pipeline for applications: key -> (label, badge classes, dot/bar color)
+SUBMISSION_STATUSES = {
+    'new': ('New', 'bg-blue-100 text-blue-800', 'bg-blue-500'),
+    'reviewing': ('Reviewing', 'bg-amber-100 text-amber-800', 'bg-amber-500'),
+    'shortlisted': ('Shortlisted', 'bg-violet-100 text-violet-800', 'bg-violet-500'),
+    'interview': ('Interview', 'bg-cyan-100 text-cyan-800', 'bg-cyan-500'),
+    'hired': ('Hired', 'bg-green-100 text-green-800', 'bg-green-500'),
+    'rejected': ('Rejected', 'bg-gray-200 text-gray-700', 'bg-gray-400'),
+}
+
+EMPLOYMENT_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']
+
+
 class Form(db.Model):
     """Form model - stores form definitions"""
     __tablename__ = 'forms'
@@ -47,10 +60,23 @@ class Form(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     is_active = db.Column(db.Boolean, default=True)
+    # Job-ad details (all optional)
+    location = db.Column(db.String(120))
+    employment_type = db.Column(db.String(40))
+    closes_at = db.Column(db.Date)  # last day applications are accepted
     
     # Relationships
     submissions = db.relationship('FormSubmission', backref='form', lazy='dynamic', cascade='all, delete-orphan')
     
+    @property
+    def is_expired(self):
+        return self.closes_at is not None and self.closes_at < date.today()
+
+    @property
+    def is_open(self):
+        """Accepting applications: active and not past the closing date"""
+        return bool(self.is_active) and not self.is_expired
+
     def __repr__(self):
         return f'<Form {self.title}>'
 
@@ -64,6 +90,12 @@ class FormSubmission(db.Model):
     submitted_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     ip_address = db.Column(db.String(45))
     user_agent = db.Column(db.String(255))
+    # Review workflow
+    status = db.Column(db.String(20), nullable=False, default='new', server_default='new', index=True)
+    notes = db.Column(db.Text)
+    reviewed_at = db.Column(db.DateTime)
+    reviewed_by_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'))
+    reviewed_by =db.relationship('User', foreign_keys=[reviewed_by_id])
     
     # Relationships
     fields = db.relationship('FormSubmissionField', backref='submission', lazy='dynamic', cascade='all, delete-orphan')

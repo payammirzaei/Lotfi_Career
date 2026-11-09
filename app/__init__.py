@@ -118,8 +118,19 @@ def create_app(config_class=Config):
     login_manager.init_app(app)
 
     @app.context_processor
-    def inject_current_year():
-        return {'current_year': datetime.now().year}
+    def inject_globals():
+        from flask_login import current_user
+        from app.models import SUBMISSION_STATUSES, EMPLOYMENT_TYPES, FormSubmission
+        nav_new_count = 0
+        try:
+            if current_user.is_authenticated and current_user.is_admin:
+                nav_new_count = FormSubmission.query.filter_by(status='new').count()
+        except Exception:  # never break page rendering (e.g. on error pages)
+            db.session.rollback()
+        return {'current_year': datetime.now().year,
+                'SUBMISSION_STATUSES': SUBMISSION_STATUSES,
+                'EMPLOYMENT_TYPES': EMPLOYMENT_TYPES,
+                'nav_new_count': nav_new_count}
 
     @app.template_filter('nl2br')
     def nl2br_filter(value):
@@ -166,6 +177,7 @@ def create_app(config_class=Config):
     from app.routes import main_bp
     from app.form_routes import form_bp, uploaded_file
     from app.admin import admin_bp
+    from app import dashboard as _dashboard  # noqa: F401  (registers dashboard/ads/applications routes)
     from app.auth import login, register, logout
 
     admin_bp.add_url_rule('/login', 'login',

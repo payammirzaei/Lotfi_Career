@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+{% set nav = [
+    ('admin.dashboard', 'fa-chart-pie', 'Overview'),
+    ('admin.ads', 'fa-bullhorn', 'Job ads'),
+    ('admin.applications', 'fa-inbox', 'Applications'),
+    ('admin.users', 'fa-users', 'Users'),
+    ('admin.sms', 'fa-comment-sms', 'SMS'),
+    ('admin.files_management', 'fa-box-archive', 'Backups'),
+] %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
+    <div class="lg:grid lg:grid-cols-[220px_1fr] lg:gap-8">
+        <!-- Sidebar (desktop) / tabs (mobile) -->
+        <aside class="mb-6 lg:mb-0">
+            <nav class="flex lg:flex-col gap-1 overflow-x-auto lg:sticky lg:top-6 -mx-4 px-4 lg:mx-0 lg:px-0">
+                {% for endpoint, icon, label in nav %}
+                {% set active = request.endpoint == endpoint %}
+                <a href="{{ url_for(endpoint) }}"
+                   class="flex items-center gap-3 whitespace-nowrap px-3 py-2 rounded-lg text-sm font-medium transition-colors
+                          {% if active %}bg-indigo-50 text-indigo-700{% else %}text-gray-600 hover:bg-gray-100 hover:text-gray-900{% endif %}">
+                    <i class="fas {{ icon }} w-4 text-center {% if active %}text-indigo-600{% else %}text-gray-400{% endif %}"></i>
+                    {{ label }}
+                    {% if endpoint == 'admin.applications' and nav_new_count %}
+                    <span class="ml-auto px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-600 text-white">{{ nav_new_count }}</span>
+                    {% endif %}
+                </a>
+                {% endfor %}
+                <div class="hidden lg:block mt-4 pt-4 border-t border-gray-200">
+                    <a href="{{ url_for('forms.create') }}"
+                       class="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition-colors">
+                        <i class="fas fa-plus"></i> New job ad
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <section class="min-w-0">
+            {% block admin_content %}{% endblock %}
+        </section>
+    </div>
+</div>
+{% endblock %}

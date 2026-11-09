@@ -1,0 +1,14 @@
+{% macro status_badge(status) -%}
+{%- set s = SUBMISSION_STATUSES.get(status, (status|title, 'bg-gray-100 text-gray-700')) -%}
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium {{ s[1] }}">{{ s[0] }}</span>
+{%- endmacro %}
+
+{% macro ad_state(form) -%}
+{%- if form.is_open -%}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>Open</span>
+{%- elif form.is_expired and form.is_active -%}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800"><span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span>Expired</span>
+{%- else -%}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600"><span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>Inactive</span>
+{%- endif -%}
+{%- endmacro %}

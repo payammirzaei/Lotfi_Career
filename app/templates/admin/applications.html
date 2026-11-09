@@ -1,0 +1,154 @@
+{% extends "admin/_layout.html" %}
+{% from "admin/_macros.html" import status_badge with context %}
+
+{% block title %}Applications · Admin{% endblock %}
+
+{% block admin_content %}
+<div class="flex flex-wrap items-end justify-between gap-4 mb-6">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Applications</h1>
+        <p class="text-sm text-gray-500 mt-1">{{ pagination.total }} result{{ 's' if pagination.total != 1 }}{% if args %} for the current filters{% endif %}</p>
+    </div>
+    <a href="{{ url_for('admin.export_applications', **args) }}"
+       class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 bg-white text-gray-700 hover:bg-gray-50">
+        <i class="fas fa-file-csv text-green-600"></i> Export CSV
+    </a>
+</div>
+
+<!-- Status tabs -->
+{% set all_count = status_counts.values()|sum %}
+<div class="flex gap-1 overflow-x-auto mb-4 border-b border-gray-200">
+    {% set base_args = args.copy() %}{% set _ = base_args.pop('status', None) %}
+    <a href="{{ url_for('admin.applications', **base_args) }}"
+       class="whitespace-nowrap px-3 py-2 -mb-px border-b-2 text-sm font-medium {% if not args.get('status') %}border-indigo-600 text-indigo-700{% else %}border-transparent text-gray-500 hover:text-gray-800{% endif %}">
+        All <span class="ml-1 text-xs text-gray-400 tabular-nums">{{ all_count }}</span>
+    </a>
+    {% for key, (label, badge, dot) in SUBMISSION_STATUSES.items() %}
+    <a href="{{ url_for('admin.applications', status=key, **base_args) }}"
+       class="whitespace-nowrap px-3 py-2 -mb-px border-b-2 text-sm font-medium {% if args.get('status') == key %}border-indigo-600 text-indigo-700{% else %}border-transparent text-gray-500 hover:text-gray-800{% endif %}">
+        {{ label }} <span class="ml-1 text-xs text-gray-400 tabular-nums">{{ status_counts.get(key, 0) }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+<!-- Filters -->
+<form method="GET" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[1fr_200px_150px_150px_auto] gap-3 mb-4">
+    {% if args.get('status') %}<input type="hidden" name="status" value="{{ args.get('status') }}">{% endif %}
+    <div class="relative">
+        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="search" name="q" value="{{ args.get('q', '') }}" placeholder="Search name, email, answers, notes or #id"
+               class="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500">
+    </div>
+    <select name="ad" class="rounded-lg border border-gray-300 text-sm py-2 focus:border-indigo-500 focus:ring-indigo-500">
+        <option value="">All job ads</option>
+        {% for f in ads %}
+        <option value="{{ f.id }}" {% if args.get('ad')|int == f.id %}selected{% endif %}>{{ f.title }}</option>
+        {% endfor %}
+    </select>
+    <input type="date" name="from" value="{{ args.get('from', '') }}" title="From date"
+           class="rounded-lg border border-gray-300 text-sm py-2 focus:border-indigo-500 focus:ring-indigo-500">
+    <input type="date" name="to" value="{{ args.get('to', '') }}" title="To date"
+           class="rounded-lg border border-gray-300 text-sm py-2 focus:border-indigo-500 focus:ring-indigo-500">
+    <div class="flex gap-2">
+        <button type="submit" class="flex-1 px-4 py-2 rounded-lg text-sm font-medium text-white bg-gray-900 hover:bg-gray-800">Filter</button>
+        {% if args %}<a href="{{ url_for('admin.applications') }}" class="px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-gray-100" title="Clear filters"><i class="fas fa-xmark"></i></a>{% endif %}
+    </div>
+</form>
+
+{% if items %}
+<form method="POST" action="{{ url_for('admin.bulk_applications') }}" id="bulk-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.full_path }}">
+
+    <!-- Bulk bar -->
+    <div id="bulk-bar" class="hidden items-center gap-3 mb-3 px-4 py-2.5 rounded-lg bg-indigo-50 border border-indigo-100 text-sm">
+        <span class="font-medium text-indigo-900"><span id="bulk-count">0</span> selected</span>
+        <select name="status" class="rounded-md border border-indigo-200 text-sm py-1.5">
+            {% for key, (label, badge, dot) in SUBMISSION_STATUSES.items() %}
+            <option value="{{ key }}">Mark as {{ label }}</option>
+            {% endfor %}
+        </select>
+        <button type="submit" class="px-3 py-1.5 rounded-md font-medium text-white bg-indigo-600 hover:bg-indigo-700">Apply</button>
+    </div>
+
+    <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="min-w-full text-sm">
+                <thead class="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                        <th class="pl-5 pr-2 py-3 w-8"><input type="checkbox" id="select-all" class="rounded border-gray-300 text-indigo-600" aria-label="Select all"></th>
+                        <th class="px-3 py-3 text-left font-medium">Applicant</th>
+                        <th class="px-3 py-3 text-left font-medium">Job ad</th>
+                        <th class="px-3 py-3 text-left font-medium">Status</th>
+                        <th class="px-3 py-3 text-left font-medium">Received</th>
+                        <th class="px-5 py-3"></th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    {% for s in items %}
+                    {% set info = summaries[s.id] %}
+                    {% set href = url_for('forms.submission_detail', form_id=s.form_id, submission_id=s.id) %}
+                    <tr class="hover:bg-gray-50/60 {% if s.status == 'new' %}bg-blue-50/30{% endif %}">
+                        <td class="pl-5 pr-2 py-3"><input type="checkbox" name="ids" value="{{ s.id }}" class="row-check rounded border-gray-300 text-indigo-600" aria-label="Select #{{ s.id }}"></td>
+                        <td class="px-3 py-3">
+                            <a href="{{ href }}" class="flex items-center gap-3">
+                                <span class="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs font-semibold">{{ info.name[:1]|upper }}</span>
+                                <span class="min-w-0">
+                                    <span class="block font-medium text-gray-900 truncate max-w-[16rem] {% if s.status == 'new' %}font-semibold{% endif %}">{{ info.name }}</span>
+                                    <span class="block text-xs text-gray-500 truncate max-w-[16rem]">
+                                        {{ info.email or info.phone or ('#' ~ s.id) }}{% if info.files %} · <i class="fas fa-paperclip"></i> {{ info.files }}{% endif %}{% if s.notes %} · <i class="fas fa-note-sticky" title="Has notes"></i>{% endif %}
+                                    </span>
+                                </span>
+                            </a>
+                        </td>
+                        <td class="px-3 py-3 text-gray-700"><a href="{{ url_for('admin.applications', ad=s.form_id) }}" class="hover:text-indigo-700">{{ s.form.title }}</a></td>
+                        <td class="px-3 py-3">{{ status_badge(s.status) }}</td>
+                        <td class="px-3 py-3 text-gray-500 whitespace-nowrap" title="{{ s.submitted_at.strftime('%Y-%m-%d %H:%M') }}">{{ s.submitted_at.strftime('%b %d, %H:%M') }}</td>
+                        <td class="px-5 py-3 text-right"><a href="{{ href }}" class="text-indigo-600 hover:text-indigo-800 font-medium">Open</a></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</form>
+
+<!-- Pagination -->
+{% if pagination.pages > 1 %}
+<div class="flex items-center justify-between mt-4 text-sm">
+    <span class="text-gray-500">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+    <div class="flex gap-2">
+        {% if pagination.has_prev %}<a href="{{ url_for('admin.applications', page=pagination.prev_num, **args) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50"><i class="fas fa-chevron-left mr-1"></i>Previous</a>{% endif %}
+        {% if pagination.has_next %}<a href="{{ url_for('admin.applications', page=pagination.next_num, **args) }}" class="px-3 py-1.5 rounded-lg border border-gray-300 bg-white hover:bg-gray-50">Next<i class="fas fa-chevron-right ml-1"></i></a>{% endif %}
+    </div>
+</div>
+{% endif %}
+{% else %}
+<div class="bg-white rounded-xl border border-dashed border-gray-300 px-6 py-16 text-center">
+    <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+    <h3 class="text-base font-semibold text-gray-900">{{ 'No applications match these filters' if args else 'No applications yet' }}</h3>
+    {% if args %}<a href="{{ url_for('admin.applications') }}" class="inline-block mt-3 text-sm text-indigo-600 hover:text-indigo-800">Clear filters</a>{% endif %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    var all = document.getElementById('select-all');
+    var bar = document.getElementById('bulk-bar');
+    if (!all || !bar) return;
+    var boxes = Array.prototype.slice.call(document.querySelectorAll('.row-check'));
+    function refresh() {
+        var n = boxes.filter(function (b) { return b.checked; }).length;
+        document.getElementById('bulk-count').textContent = n;
+        bar.classList.toggle('hidden', n === 0);
+        bar.classList.toggle('flex', n > 0);
+        all.checked = n === boxes.length;
+        all.indeterminate = n > 0 && n < boxes.length;
+    }
+    all.addEventListener('change', function () { boxes.forEach(function (b) { b.checked = all.checked; }); refresh(); });
+    boxes.forEach(function (b) { b.addEventListener('change', refresh); });
+})();
+</script>
+{% endblock %}

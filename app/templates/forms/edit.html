@@ -36,7 +36,9 @@
                 <textarea id="description" name="description" rows="3"
                           class="w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">{{ form.description or '' }}</textarea>
             </div>
-            
+
+            {% include "forms/_ad_details.html" %}
+
             <!-- Form Template -->
             <div>
                 <label for="form_template" class="block text-sm font-medium text-gray-700 mb-2">

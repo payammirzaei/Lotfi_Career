@@ -120,26 +120,6 @@ def toggle_admin(user_id):
     return redirect(url_for('admin.users'))
 
 
-@admin_bp.route('/dashboard')
-@login_required
-@admin_required
-def dashboard():
-    """Admin dashboard"""
-    total_users = User.query.count()
-    pending_users = User.query.filter_by(is_approved=False).count()
-    total_forms = Form.query.count()
-    active_forms = Form.query.filter_by(is_active=True).count()
-    
-    stats = {
-        'total_users': total_users,
-        'pending_users': pending_users,
-        'total_forms': total_forms,
-        'active_forms': active_forms
-    }
-    
-    return render_template('admin/dashboard.html', stats=stats)
-
-
 @admin_bp.route('/database')
 @login_required
 @admin_required
