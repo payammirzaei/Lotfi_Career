@@ -19,7 +19,8 @@ RUN useradd --create-home --uid 1000 appuser \
     && chown -R appuser:appuser /usr/src/app/uploads
 USER appuser
 
-VOLUME ["/usr/src/app/uploads"]
+# Persistent storage is attached at /usr/src/app/uploads by the platform
+# (Railway volume, Liara disk, or the "uploads" volume in docker-compose.yml).
 EXPOSE 8000
 
 CMD ["sh", "-c", "exec gunicorn -w ${WEB_CONCURRENCY:-3} -b 0.0.0.0:${PORT} --access-logfile - wsgi:app"]
