@@ -1,0 +1,13 @@
+{
+  "app": "lotfi-career",
+  "port": 80,
+  "build": {
+    "location": "iran"
+  },
+  "disks": [
+    {
+      "name": "disk1",
+      "mountTo": "uploads"
+    }
+  ]
+}

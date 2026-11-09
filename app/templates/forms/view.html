@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{{ form.title }}">
+    <title>{{ form.title }} - Flask App</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Vazirmatn Font Family - Persian/Farsi Font */
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-Thin.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-Thin.ttf") }}') format('truetype');
+            font-weight: 100;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-ExtraLight.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-ExtraLight.ttf") }}') format('truetype');
+            font-weight: 200;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-Light.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-Light.ttf") }}') format('truetype');
+            font-weight: 300;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-Regular.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-Regular.ttf") }}') format('truetype');
+            font-weight: 400;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-Medium.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-Medium.ttf") }}') format('truetype');
+            font-weight: 500;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-SemiBold.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-SemiBold.ttf") }}') format('truetype');
+            font-weight: 600;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-Bold.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-Bold.ttf") }}') format('truetype');
+            font-weight: 700;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-ExtraBold.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-ExtraBold.ttf") }}') format('truetype');
+            font-weight: 800;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Vazirmatn';
+            src: url('{{ url_for("static", filename="fonts/webfonts/Vazirmatn-Black.woff2") }}') format('woff2'),
+                 url('{{ url_for("static", filename="fonts/ttf/Vazirmatn-Black.ttf") }}') format('truetype');
+            font-weight: 900;
+            font-style: normal;
+            font-display: swap;
+        }
+        
+        body {
+            font-family: 'Vazirmatn', 'Inter', sans-serif !important;
+        }
+        
+        /* Exclude icons from font-family */
+        i[class*="fa-"],
+        i[class*="fas"],
+        i[class*="far"],
+        i[class*="fal"],
+        i[class*="fab"],
+        .fa,
+        .fas,
+        .far,
+        .fal,
+        .fab {
+            font-family: "Font Awesome 6 Free", "Font Awesome 6 Brands" !important;
+        }
+        
+        [dir="rtl"],
+        [dir="rtl"] *:not(i):not(.fa):not([class*="fa-"]) {
+            font-family: 'Vazirmatn', sans-serif !important;
+        }
+        
+        form,
+        form *:not(i):not(.fa):not([class*="fa-"]),
+        input,
+        textarea,
+        select,
+        button:not([class*="fa-"]),
+        label {
+            font-family: 'Vazirmatn', 'Inter', sans-serif !important;
+        }
+        
+        /* Apply Vazirmatn to text elements */
+        p, span, div, h1, h2, h3, h4, h5, h6, a, li, td, th {
+            font-family: 'Vazirmatn', 'Inter', sans-serif !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                {% for category, message in messages %}
+                    <div class="rounded-md p-4 mb-4 {% if category == 'error' %}bg-red-50 border border-red-200{% elif category == 'success' %}bg-green-50 border border-green-200{% elif category == 'info' %}bg-blue-50 border border-blue-200{% else %}bg-gray-50 border border-gray-200{% endif %}">
+                        <div class="flex">
+                            <div class="flex-shrink-0">
+                                {% if category == 'error' %}
+                                    <i class="fas fa-exclamation-circle text-red-400"></i>
+                                {% elif category == 'success' %}
+                                    <i class="fas fa-check-circle text-green-400"></i>
+                                {% elif category == 'info' %}
+                                    <i class="fas fa-info-circle text-blue-400"></i>
+                                {% else %}
+                                    <i class="fas fa-bell text-gray-400"></i>
+                                {% endif %}
+                            </div>
+                            <div class="ml-3">
+                                <p class="text-sm font-medium {% if category == 'error' %}text-red-800{% elif category == 'success' %}text-green-800{% elif category == 'info' %}text-blue-800{% else %}text-gray-800{% endif %}">
+                                    {{ message }}
+                                </p>
+                            </div>
+                            <div class="ml-auto pl-3">
+                                <button type="button" class="inline-flex rounded-md p-1.5 {% if category == 'error' %}text-red-500 hover:bg-red-100{% elif category == 'success' %}text-green-500 hover:bg-green-100{% elif category == 'info' %}text-blue-500 hover:bg-blue-100{% else %}text-gray-500 hover:bg-gray-100{% endif %} focus:outline-none" onclick="this.parentElement.parentElement.parentElement.remove()">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    <!-- Main Content -->
+    <main>
+        <div class="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-4xl mx-auto">
+                <!-- Logo Section -->
+                <div class="text-center mb-8">
+                    <img src="{{ url_for('static', filename='images/logo-EN.svg') }}" alt="Lotfi Piano Gallery" class="h-16 w-auto mx-auto">
+                </div>
+                
+                {{ form_html|safe }}
+            </div>
+        </div>
+    </main>
+</body>
+</html>

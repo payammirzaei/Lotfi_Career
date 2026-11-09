@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Database Management{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Database Management</h1>
+    
+    {% if db_info.type == 'non-sqlite' %}
+    <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <p class="text-yellow-800">
+            <strong>Note:</strong> This app is running on a managed <code>{{ db_info.uri }}</code> database.
+            Use your hosting provider's backup feature (e.g. Liara database backups) or
+            <code>pg_dump</code> / <code>pg_restore</code> to back up and restore data.
+        </p>
+    </div>
+    {% else %}
+    
+    <!-- Database Info Card -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Database Information</h2>
+        {% if db_info.exists %}
+        <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Status</dt>
+                <dd class="mt-1 text-sm text-gray-900">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        Active
+                    </span>
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">File Size</dt>
+                <dd class="mt-1 text-sm text-gray-900">
+                    {% set size_mb = (db_info.size / 1024 / 1024) | round(2) %}
+                    {{ size_mb }} MB
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Last Modified</dt>
+                <dd class="mt-1 text-sm text-gray-900">
+                    {{ db_info.modified.strftime('%Y-%m-%d %H:%M:%S') }}
+                </dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Path</dt>
+                <dd class="mt-1 text-sm text-gray-900 font-mono text-xs break-all">
+                    {{ db_info.path }}
+                </dd>
+            </div>
+        </dl>
+        {% else %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <p class="text-yellow-800">
+                Database file not found at: <code class="font-mono text-xs">{{ db_info.path }}</code>
+            </p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Download Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Download Database Backup</h2>
+        <p class="text-gray-600 mb-4">
+            Download a backup of your current database. Keep this file safe as it contains all your data.
+        </p>
+        {% if db_info.exists %}
+        <a href="{{ url_for('admin.download_database') }}" 
+           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+            <i class="fas fa-download mr-2"></i>
+            Download Database Backup
+        </a>
+        {% else %}
+        <p class="text-gray-500 italic">No database file available to download.</p>
+        {% endif %}
+    </div>
+    
+    <!-- Upload Section -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Upload Database Backup</h2>
+        <p class="text-gray-600 mb-4">
+            Restore a previously downloaded database backup. 
+            <strong class="text-red-600">Warning: This will replace your current database!</strong>
+        </p>
+        
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+            <h3 class="text-sm font-semibold text-red-800 mb-2">⚠️ Important Notes:</h3>
+            <ul class="list-disc list-inside text-sm text-red-700 space-y-1">
+                <li>A backup of your current database will be created automatically before restoration</li>
+                <li>The uploaded database file will be validated before replacing the current one</li>
+                <li>Make sure the uploaded file is a valid SQLite database (.db file)</li>
+                <li>You may need to refresh the page or restart the application after upload</li>
+            </ul>
+        </div>
+        
+        <form method="POST" action="{{ url_for('admin.upload_database') }}" enctype="multipart/form-data" class="space-y-4">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div>
+                <label for="database" class="block text-sm font-medium text-gray-700 mb-2">
+                    Select Database File (.db)
+                </label>
+                <input type="file" 
+                       id="database" 
+                       name="database" 
+                       accept=".db"
+                       required
+                       class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+            </div>
+            <button type="submit" 
+                    class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                <i class="fas fa-upload mr-2"></i>
+                Upload and Restore Database
+            </button>
+        </form>
+    </div>
+    
+    <!-- Usage Instructions -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-6">
+        <h3 class="text-lg font-semibold text-blue-900 mb-3">How to Use</h3>
+        <ol class="list-decimal list-inside space-y-2 text-blue-800">
+            <li><strong>Before deployment:</strong> Download the current database backup</li>
+            <li><strong>After deployment:</strong> Upload the downloaded database file to restore your data</li>
+            <li><strong>Verification:</strong> The system will validate the database file before restoring</li>
+            <li><strong>Automatic backup:</strong> Your current database is automatically backed up before restoration</li>
+        </ol>
+    </div>
+    
+    {% endif %}
+    
+    <!-- Back to Dashboard -->
+    <div class="mt-6">
+        <a href="{{ url_for('admin.dashboard') }}" 
+           class="inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-500">
+            <i class="fas fa-arrow-left mr-2"></i>
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+

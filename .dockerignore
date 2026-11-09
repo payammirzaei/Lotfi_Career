@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+instance/
+app/db/
+app/uploads/
+uploads/
+*.db
+*.log

@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Admin Dashboard</h1>
+    
+    <!-- Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                    <i class="fas fa-users text-blue-600 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Total Users</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_users }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-yellow-100 rounded-lg p-3">
+                    <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Pending Approval</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.pending_users }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                    <i class="fas fa-file-alt text-green-600 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Total Forms</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.total_forms }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="flex-shrink-0 bg-indigo-100 rounded-lg p-3">
+                    <i class="fas fa-check-circle text-indigo-600 text-2xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">Active Forms</p>
+                    <p class="text-2xl font-semibold text-gray-900">{{ stats.active_forms }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <a href="{{ url_for('admin.users') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div class="flex-shrink-0 bg-blue-100 rounded-lg p-3">
+                    <i class="fas fa-users text-blue-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-900">Manage Users</h3>
+                    <p class="text-sm text-gray-500">Approve, reject, or manage user accounts</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('forms.index') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div class="flex-shrink-0 bg-green-100 rounded-lg p-3">
+                    <i class="fas fa-file-alt text-green-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-900">Manage Forms</h3>
+                    <p class="text-sm text-gray-500">View and manage all forms</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.database_management') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div class="flex-shrink-0 bg-purple-100 rounded-lg p-3">
+                    <i class="fas fa-database text-purple-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-900">Database Management</h3>
+                    <p class="text-sm text-gray-500">Download and restore database backups</p>
+                </div>
+            </a>
+            
+            <a href="{{ url_for('admin.files_management') }}" class="flex items-center p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200">
+                <div class="flex-shrink-0 bg-orange-100 rounded-lg p-3">
+                    <i class="fas fa-file-archive text-orange-600"></i>
+                </div>
+                <div class="ml-4">
+                    <h3 class="text-sm font-medium text-gray-900">Files Management</h3>
+                    <p class="text-sm text-gray-500">Download and restore uploaded files backup</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+

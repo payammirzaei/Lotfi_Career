@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Pending Approval - Flask App{% endblock %}
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 py-12 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-md w-full space-y-8">
+        <div class="text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
+                <i class="fas fa-clock text-yellow-600 text-2xl"></i>
+            </div>
+            <h2 class="text-3xl font-extrabold text-gray-900">
+                Account Pending Approval
+            </h2>
+            <p class="mt-4 text-sm text-gray-600">
+                Your account registration was successful, but it requires administrator approval before you can access the system.
+            </p>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <i class="fas fa-info-circle text-blue-500 mt-1 mr-3"></i>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-900">What happens next?</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            An administrator will review your account and approve it. You will be able to access all features once approved.
+                        </p>
+                    </div>
+                </div>
+                
+                <div class="flex items-start">
+                    <i class="fas fa-user text-indigo-500 mt-1 mr-3"></i>
+                    <div>
+                        <h3 class="text-sm font-medium text-gray-900">Your Account</h3>
+                        <p class="mt-1 text-sm text-gray-600">
+                            Username: <strong>{{ current_user.username }}</strong><br>
+                            Email: <strong>{{ current_user.email }}</strong>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center">
+            <a href="{{ url_for('admin.logout') }}" class="text-sm text-indigo-600 hover:text-indigo-500">
+                <i class="fas fa-sign-out-alt mr-1"></i>Logout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+
+
+
+
+
+

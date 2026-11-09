@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Forms - Flask App{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-3xl font-bold text-gray-900">My Forms</h1>
+        <a href="{{ url_for('forms.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200">
+            <i class="fas fa-plus mr-2"></i>Create New Form
+        </a>
+    </div>
+
+    {% if forms %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for form in forms %}
+            <div class="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow duration-200 p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-semibold text-gray-900">{{ form.title }}</h3>
+                    <span class="px-2 py-1 text-xs rounded-full {% if form.is_active %}bg-green-100 text-green-800{% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {% if form.is_active %}Active{% else %}Inactive{% endif %}
+                    </span>
+                </div>
+                
+                {% if form.description %}
+                <p class="text-sm text-gray-600 mb-4">{{ form.description[:100] }}{% if form.description|length > 100 %}...{% endif %}</p>
+                {% endif %}
+                
+                <div class="flex items-center text-sm text-gray-500 mb-4">
+                    <i class="fas fa-calendar mr-2"></i>
+                    {{ form.created_at.strftime('%B %d, %Y') }}
+                </div>
+                
+                <div class="flex items-center text-sm text-gray-500 mb-4">
+                    <i class="fas fa-inbox mr-2"></i>
+                    {{ form.submissions.count() }} submission{{ 's' if form.submissions.count() != 1 else '' }}
+                </div>
+                
+                <div class="flex space-x-2">
+                    <a href="{{ url_for('forms.edit', form_id=form.id) }}" class="flex-1 text-center px-3 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors duration-200 text-sm font-medium">
+                        <i class="fas fa-edit mr-1"></i>Edit
+                    </a>
+                    <a href="{{ url_for('forms.view', form_id=form.id) }}" target="_blank" class="flex-1 text-center px-3 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors duration-200 text-sm font-medium">
+                        <i class="fas fa-eye mr-1"></i>View
+                    </a>
+                    <a href="{{ url_for('forms.submissions', form_id=form.id) }}" class="flex-1 text-center px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors duration-200 text-sm font-medium">
+                        <i class="fas fa-list mr-1"></i>Submissions
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="text-center py-12 bg-white rounded-lg shadow">
+            <i class="fas fa-file-alt text-6xl text-gray-400 mb-4"></i>
+            <h3 class="text-xl font-semibold text-gray-900 mb-2">No forms yet</h3>
+            <p class="text-gray-600 mb-6">Get started by creating your first form</p>
+            <a href="{{ url_for('forms.create') }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors duration-200">
+                <i class="fas fa-plus mr-2"></i>Create Your First Form
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+
+
+
+
+
+

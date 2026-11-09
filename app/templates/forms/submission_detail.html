@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Submission #{{ submission.id }} - Flask App{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900">Submission #{{ submission.id }}</h1>
+            <p class="text-gray-600 mt-1">{{ form.title }}</p>
+        </div>
+        <div class="flex space-x-2">
+            <a href="{{ url_for('forms.submissions', form_id=form.id) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors duration-200">
+                <i class="fas fa-arrow-left mr-2"></i>Back to Submissions
+            </a>
+            <form method="POST" 
+                  action="{{ url_for('forms.delete_submission', form_id=form.id, submission_id=submission.id) }}" 
+                  class="inline"
+                  onsubmit="return confirm('Are you sure you want to delete this submission? This will also delete all attached files. This action cannot be undone.');">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" 
+                        class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200">
+                    <i class="fas fa-trash mr-2"></i>Delete Submission
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Submission Details</h2>
+        <dl class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <dt class="text-sm font-medium text-gray-500">Submitted At</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ submission.submitted_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+            </div>
+            <div>
+                <dt class="text-sm font-medium text-gray-500">IP Address</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ submission.ip_address or 'N/A' }}</dd>
+            </div>
+            {% if submission.user_agent %}
+            <div class="sm:col-span-2">
+                <dt class="text-sm font-medium text-gray-500">User Agent</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ submission.user_agent }}</dd>
+            </div>
+            {% endif %}
+        </dl>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-lg p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Form Data</h2>
+        <dl class="space-y-4">
+            {% for field in submission.fields %}
+            <div class="border-b border-gray-200 pb-4 last:border-0">
+                <dt class="text-sm font-medium text-gray-500 mb-1">
+                    {{ field.field_name|replace('-', ' ')|replace('_', ' ')|title }}
+                </dt>
+                <dd class="text-sm text-gray-900">
+                    {% if field.file_path %}
+                        <div class="flex items-center space-x-2">
+                            <i class="fas fa-file text-indigo-600"></i>
+                            <span>{{ field.file_name }}</span>
+                            <a href="{{ url_for('uploaded_file', filename=field.file_path) }}" 
+                               target="_blank"
+                               class="text-indigo-600 hover:text-indigo-800 ml-2">
+                                <i class="fas fa-download"></i> Download
+                            </a>
+                        </div>
+                    {% else %}
+                        {% set json_value = field.field_value|from_json %}
+                        {% if json_value is iterable and json_value is not string %}
+                            <ul class="list-disc list-inside">
+                                {% for value in json_value %}
+                                <li>{{ value }}</li>
+                                {% endfor %}
+                            </ul>
+                        {% else %}
+                            {{ field.field_value|nl2br|safe if field.field_value else 'N/A' }}
+                        {% endif %}
+                    {% endif %}
+                </dd>
+            </div>
+            {% endfor %}
+        </dl>
+    </div>
+</div>
+{% endblock %}
+
+
