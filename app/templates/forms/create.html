@@ -3,7 +3,7 @@
 {% block title %}New job ad{% endblock %}
 
 {% block content %}
-<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
     <h1 class="text-3xl font-bold text-gray-900 mb-6">New job ad</h1>
     
     <form method="POST" action="{{ url_for('forms.create') }}" class="bg-white rounded-lg shadow-lg p-6">
@@ -31,29 +31,9 @@
 
             {% include "forms/_ad_details.html" %}
 
-            <!-- Form Template -->
-            <div>
-                <label for="form_template" class="block text-sm font-medium text-gray-700 mb-2">
-                    Application form <span class="text-red-500">*</span>
-                </label>
-                <p class="text-sm text-gray-600 mb-3">
-                    Use WPCF7-like syntax. Available field types: <code class="bg-gray-100 px-2 py-1 rounded">[text*]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[email*]</code>, <code class="bg-gray-100 px-2 py-1 rounded">[tel]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[url]</code>, <code class="bg-gray-100 px-2 py-1 rounded">[number]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[date]</code>, <code class="bg-gray-100 px-2 py-1 rounded">[textarea]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[select]</code>, <code class="bg-gray-100 px-2 py-1 rounded">[radio]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[checkbox]</code>, <code class="bg-gray-100 px-2 py-1 rounded">[file]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[acceptance]</code>, <code class="bg-gray-100 px-2 py-1 rounded">[quiz]</code>, 
-                    <code class="bg-gray-100 px-2 py-1 rounded">[submit]</code>
-                </p>
-                <textarea id="form_template" name="form_template" required rows="20"
-                          class="w-full font-mono text-sm rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500"
-                          placeholder="Enter your form template here...">{{ default_template }}</textarea>
-                <p class="text-xs text-gray-500 mt-2">
-                    <strong>Example:</strong> <code>[text* your-name class="w-full rounded-lg border-gray-300"]</code> - * means required
-                </p>
-            </div>
-            
+            {% set template_value = default_template %}
+            {% include "forms/_template_editor.html" %}
+
             <!-- Buttons -->
             <div class="flex space-x-4 pt-4">
                 <button type="submit" class="flex-1 bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition-colors duration-200">

@@ -9,7 +9,7 @@ from flask_wtf.csrf import generate_csrf
 from app.models import Form, FormSubmission, FormSubmissionField, SUBMISSION_STATUSES, EMPLOYMENT_TYPES
 from app.applications import can_manage, summarize, parse_date
 from app.auth import is_safe_redirect
-from app.forms import allowed_file, render_form_from_template, parse_form_template
+from app.forms import allowed_file, render_form_from_template, parse_form_template, analyze_form_template, KNOWN_FIELD_TYPES
 from flask import url_for
 from werkzeug.utils import secure_filename
 from datetime import datetime
@@ -62,7 +62,7 @@ DEFAULT_TEMPLATE = '''<div class="max-w-2xl mx-auto p-6 sm:p-8 bg-white rounded-
 
   <div>
     <label class="block text-sm font-medium text-gray-700 mb-1">Resume / CV (PDF or Word) *</label>
-    [file* resume filetypes:pdf|doc|docx class="w-full text-sm"]
+    [file* resume filetypes:pdf|doc|docx class="w-full text-sm text-gray-700 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"]
   </div>
 
   <div>
@@ -75,6 +75,11 @@ DEFAULT_TEMPLATE = '''<div class="max-w-2xl mx-auto p-6 sm:p-8 bg-white rounded-
   </div>
 
 </div>'''
+
+
+@form_bp.context_processor
+def _editor_context():
+    return {'standard_template': DEFAULT_TEMPLATE}
 
 
 @form_bp.route('/')
@@ -182,6 +187,24 @@ def edit(form_id):
     return render_template('forms/edit.html', form=form)
 
 
+@form_bp.route('/preview', methods=['POST'])
+@login_required
+@approved_required
+@limiter.limit('120 per minute')
+def preview():
+    """Live preview for the template editor: sanitized HTML + authoring warnings"""
+    data = request.get_json(silent=True) or {}
+    template = str(data.get('template') or '')[:200_000]
+    html = render_form_from_template(template, 0, '#')
+    fields, warnings = analyze_form_template(template)
+    return jsonify({
+        'html': str(html),
+        'warnings': warnings,
+        'fields': [{'type': f['type'], 'name': f['name'], 'required': f['required']}
+                   for f in fields if f['type'] != 'submit' and f['type'] in KNOWN_FIELD_TYPES],
+    })
+
+
 @form_bp.route('/<int:form_id>/view')
 def view(form_id):
     """View and submit a form (public)"""
@@ -210,7 +233,7 @@ def submit(form_id):
         return render_template('forms/closed.html', form=form), 410
 
     # Parse form template to get required fields
-    fields = parse_form_template(form.form_template)
+    fields = [f for f in parse_form_template(form.form_template) if f['type'] in KNOWN_FIELD_TYPES]
     required_fields = {f['name']: f for f in fields if f.get('required', False)}
 
     # Validate required fields

@@ -1,0 +1,449 @@
+{# Application-form editor: CodeMirror + field inserter + live preview.
+   Expects `template_value` (the current template text). Posts as `form_template`. #}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<style>
+    .tpl-editor .CodeMirror { height: 560px; font-size: 13px; line-height: 1.55; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important; border-radius: 0 0 0.75rem 0.75rem; }
+    .tpl-editor .CodeMirror * { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace !important; }
+    .tpl-editor .CodeMirror-gutters { background: #f9fafb; border-right: 1px solid #e5e7eb; }
+    .tpl-editor .cm-wpcf7 { background: #eef2ff; color: #4338ca !important; border-radius: 3px; font-weight: 600; }
+    .tpl-editor .cm-wpcf7-req { color: #be123c !important; }
+    .tpl-editor .CodeMirror-matchingtag { background: rgba(250, 204, 21, .25); }
+    #tpl-field-dialog::backdrop { background: rgba(17, 24, 39, .45); }
+</style>
+
+<div class="tpl-editor">
+    <div class="flex flex-wrap items-end justify-between gap-2 mb-2">
+        <div>
+            <label for="form_template" class="block text-sm font-medium text-gray-700">
+                Application form <span class="text-red-500">*</span>
+            </label>
+            <p class="text-xs text-gray-500 mt-0.5">HTML + <code class="px-1 rounded bg-indigo-50 text-indigo-700">[field]</code> tags. Use <strong>Add field</strong> to insert fields without writing code.</p>
+        </div>
+        <div class="flex items-center gap-1 text-xs">
+            <span id="tpl-status" class="text-gray-400 mr-2"></span>
+            <button type="button" id="tpl-toggle-layout" class="hidden lg:inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-50" title="Stack editor and preview">
+                <i class="fas fa-table-columns"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="tpl-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+        <!-- Editor -->
+        <div class="min-w-0 rounded-xl border border-gray-300 bg-white shadow-sm">
+            <div class="flex flex-wrap items-center gap-1 px-2 py-2 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <div class="relative" id="tpl-add-wrap">
+                    <button type="button" id="tpl-add-btn" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">
+                        <i class="fas fa-plus"></i> Add field <i class="fas fa-chevron-down text-[10px] opacity-75"></i>
+                    </button>
+                    <div id="tpl-add-menu" class="hidden absolute z-20 mt-1 w-64 rounded-lg border border-gray-200 bg-white shadow-lg p-1 text-sm">
+                        <p class="px-2 pt-1 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">Fields</p>
+                        {% for key, icon, label in [
+                            ('text', 'fa-font', 'Short text'), ('email', 'fa-at', 'Email'), ('tel', 'fa-phone', 'Phone'),
+                            ('textarea', 'fa-align-left', 'Long text'), ('number', 'fa-hashtag', 'Number'), ('date', 'fa-calendar', 'Date'),
+                            ('url', 'fa-link', 'Website / URL'), ('select', 'fa-list', 'Dropdown'), ('radio', 'fa-circle-dot', 'Single choice'),
+                            ('checkbox', 'fa-square-check', 'Multiple choice'), ('file', 'fa-paperclip', 'File upload'),
+                            ('acceptance', 'fa-handshake', 'Consent checkbox'), ('quiz', 'fa-circle-question', 'Quiz (anti-spam)'),
+                            ('submit', 'fa-paper-plane', 'Submit button')] %}
+                        <button type="button" data-field="{{ key }}" class="tpl-add-item w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-700">
+                            <i class="fas {{ icon }} w-4 text-center text-gray-400"></i>{{ label }}
+                        </button>
+                        {% endfor %}
+                        <p class="px-2 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400 border-t border-gray-100 mt-1">Layout</p>
+                        <button type="button" data-snippet="heading" class="tpl-add-item w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"><i class="fas fa-heading w-4 text-center text-gray-400"></i>Section heading</button>
+                        <button type="button" data-snippet="paragraph" class="tpl-add-item w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"><i class="fas fa-paragraph w-4 text-center text-gray-400"></i>Paragraph</button>
+                        <button type="button" data-snippet="columns" class="tpl-add-item w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"><i class="fas fa-table-columns w-4 text-center text-gray-400"></i>Two columns</button>
+                        <button type="button" data-snippet="divider" class="tpl-add-item w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left text-gray-700 hover:bg-indigo-50 hover:text-indigo-700"><i class="fas fa-minus w-4 text-center text-gray-400"></i>Divider</button>
+                    </div>
+                </div>
+                <span class="w-px h-5 bg-gray-300 mx-1"></span>
+                <button type="button" data-wrap="strong" class="tpl-wrap w-8 h-8 rounded-md text-gray-600 hover:bg-gray-200" title="Bold"><i class="fas fa-bold"></i></button>
+                <button type="button" data-wrap="em" class="tpl-wrap w-8 h-8 rounded-md text-gray-600 hover:bg-gray-200" title="Italic"><i class="fas fa-italic"></i></button>
+                <button type="button" id="tpl-undo" class="w-8 h-8 rounded-md text-gray-600 hover:bg-gray-200" title="Undo (Ctrl+Z)"><i class="fas fa-rotate-left"></i></button>
+                <button type="button" id="tpl-redo" class="w-8 h-8 rounded-md text-gray-600 hover:bg-gray-200" title="Redo (Ctrl+Y)"><i class="fas fa-rotate-right"></i></button>
+                <span class="flex-1"></span>
+                <button type="button" id="tpl-reset" class="px-2.5 py-1.5 rounded-md text-xs text-gray-600 hover:bg-gray-200" title="Replace with the standard application form">
+                    <i class="fas fa-wand-magic-sparkles mr-1"></i>Use standard form
+                </button>
+            </div>
+            <textarea id="form_template" name="form_template" rows="24"
+                      class="w-full font-mono text-sm border-0 rounded-b-xl">{{ template_value }}</textarea>
+        </div>
+
+        <!-- Preview -->
+        <div class="min-w-0 rounded-xl border border-gray-300 bg-white shadow-sm flex flex-col">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-gray-200 bg-gray-50 rounded-t-xl">
+                <span class="text-sm font-medium text-gray-700"><i class="fas fa-eye text-gray-400 mr-1"></i>Live preview</span>
+                <span class="flex-1"></span>
+                <div class="inline-flex rounded-md border border-gray-300 bg-white p-0.5 text-xs" role="group" aria-label="Preview width">
+                    <button type="button" data-width="100%" class="tpl-width px-2 py-1 rounded bg-gray-900 text-white" title="Desktop"><i class="fas fa-desktop"></i></button>
+                    <button type="button" data-width="390px" class="tpl-width px-2 py-1 rounded text-gray-600" title="Mobile"><i class="fas fa-mobile-screen"></i></button>
+                </div>
+            </div>
+            <div class="flex-1 bg-gray-100 p-3 rounded-b-xl overflow-auto flex justify-center" style="min-height: 560px;">
+                <iframe id="tpl-preview" title="Form preview" sandbox="allow-scripts"
+                        class="bg-white rounded-lg shadow-sm transition-all duration-200" style="width: 100%; height: 540px; border: 0;"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warnings + field summary -->
+    <div class="mt-3 grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
+        <ul id="tpl-warnings" class="space-y-1"></ul>
+        <div id="tpl-fields" class="flex flex-wrap gap-1.5 lg:justify-end"></div>
+    </div>
+</div>
+
+<!-- Field dialog -->
+<dialog id="tpl-field-dialog" class="w-full max-w-lg rounded-2xl p-0 shadow-2xl">
+    <div id="tpl-field-form" class="p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <h3 id="tpl-dlg-title" class="text-lg font-semibold text-gray-900">Add field</h3>
+            <button type="button" class="tpl-dlg-close w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100" aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+
+        <div data-for="label">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-label">Label</label>
+            <input id="dlg-label" type="text" class="w-full rounded-lg border-gray-300 text-sm" placeholder="e.g. Full name">
+        </div>
+        <div data-for="name">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-name">Field name <span class="font-normal text-gray-400">(used in results &amp; CSV)</span></label>
+            <input id="dlg-name" type="text" class="w-full rounded-lg border-gray-300 text-sm font-mono" placeholder="full-name">
+        </div>
+        <div data-for="placeholder">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-placeholder">Placeholder <span class="font-normal text-gray-400">(optional)</span></label>
+            <input id="dlg-placeholder" type="text" class="w-full rounded-lg border-gray-300 text-sm">
+        </div>
+        <div data-for="options">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-options">Options <span class="font-normal text-gray-400">(one per line)</span></label>
+            <textarea id="dlg-options" rows="4" class="w-full rounded-lg border-gray-300 text-sm">Option 1
+Option 2
+Option 3</textarea>
+        </div>
+        <div data-for="rows" class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-rows">Rows</label>
+                <input id="dlg-rows" type="number" min="2" max="20" value="5" class="w-full rounded-lg border-gray-300 text-sm"></div>
+        </div>
+        <div data-for="minmax" class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-min">Min</label>
+                <input id="dlg-min" type="number" class="w-full rounded-lg border-gray-300 text-sm"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-max">Max</label>
+                <input id="dlg-max" type="number" class="w-full rounded-lg border-gray-300 text-sm"></div>
+        </div>
+        <div data-for="filetypes">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-filetypes">Allowed file types</label>
+            <input id="dlg-filetypes" type="text" value="pdf|doc|docx" class="w-full rounded-lg border-gray-300 text-sm font-mono">
+            <p class="text-xs text-gray-400 mt-1">Separated by |. The server accepts: txt, pdf, png, jpg, jpeg, gif, doc, docx, xls, xlsx, zip (max 16 MB).</p>
+        </div>
+        <div data-for="quiz" class="grid grid-cols-2 gap-3">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-question">Question</label>
+                <input id="dlg-question" type="text" value="What is 3 + 4?" class="w-full rounded-lg border-gray-300 text-sm"></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-answer">Correct answer</label>
+                <input id="dlg-answer" type="text" value="7" class="w-full rounded-lg border-gray-300 text-sm"></div>
+        </div>
+        <div data-for="consent">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-consent">Consent text</label>
+            <input id="dlg-consent" type="text" value="I agree that my data is stored to process my application." class="w-full rounded-lg border-gray-300 text-sm">
+        </div>
+        <div data-for="button">
+            <label class="block text-sm font-medium text-gray-700 mb-1" for="dlg-button">Button text</label>
+            <input id="dlg-button" type="text" value="Submit application" class="w-full rounded-lg border-gray-300 text-sm">
+        </div>
+        <label data-for="required" class="flex items-center gap-2 text-sm text-gray-700">
+            <input id="dlg-required" type="checkbox" checked class="rounded text-indigo-600"> Required
+        </label>
+
+        <div class="rounded-lg bg-gray-50 border border-gray-200 p-3">
+            <p class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">Will insert</p>
+            <pre id="dlg-snippet" class="text-xs text-gray-700 whitespace-pre-wrap break-all font-mono max-h-32 overflow-auto"></pre>
+        </div>
+
+        <div class="flex justify-end gap-2 pt-1">
+            <button type="button" class="tpl-dlg-close px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100">Cancel</button>
+            <button type="button" id="tpl-dlg-insert" class="px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700">Insert at cursor</button>
+        </div>
+    </div>
+</dialog>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/closetag.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/xml-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/edit/matchtags.min.js"></script>
+<script>
+(function () {
+    var PREVIEW_URL = {{ url_for('forms.preview')|tojson }};
+    var CSRF = {{ csrf_token()|tojson }};
+    var STANDARD = {{ standard_template|tojson }};
+    var FONT_URL = {{ url_for('static', filename='fonts/variable/Vazirmatn[wght].ttf', _external=True)|tojson }};
+    var INPUT_CLS = 'w-full rounded-lg border-gray-300 focus:border-indigo-500 focus:ring-indigo-500';
+    var textarea = document.getElementById('form_template');
+    var cm = null;
+
+    // ---------- editor ----------
+    if (window.CodeMirror) {
+        CodeMirror.defineMode('wpcf7html', function (config) {
+            return CodeMirror.overlayMode(CodeMirror.getMode(config, 'htmlmixed'), {
+                token: function (stream) {
+                    if (stream.match(/^\[(\w+)\*/)) { stream.skipTo(']') ? stream.next() : stream.skipToEnd(); return 'wpcf7 wpcf7-req'; }
+                    if (stream.match(/^\[\w+[\s\]]/)) { stream.backUp(1); stream.skipTo(']') ? stream.next() : stream.skipToEnd(); return 'wpcf7'; }
+                    while (stream.next() != null && !stream.match(/^\[\w/, false)) {}
+                    return null;
+                }
+            });
+        });
+        cm = CodeMirror.fromTextArea(textarea, {
+            mode: 'wpcf7html', lineNumbers: true, lineWrapping: true, tabSize: 2, indentUnit: 2,
+            autoCloseTags: true, matchTags: { bothTags: true },
+            extraKeys: { 'Ctrl-S': function () { textarea.form.requestSubmit(); }, 'Cmd-S': function () { textarea.form.requestSubmit(); } }
+        });
+        // keep the hidden textarea in sync for native "required" validation
+        cm.on('change', function () { cm.save(); schedulePreview(); });
+    } else {
+        textarea.addEventListener('input', schedulePreview);
+    }
+    function getValue() { return cm ? cm.getValue() : textarea.value; }
+    function setValue(v) { if (cm) { cm.setValue(v); } else { textarea.value = v; schedulePreview(); } }
+    function insertAtCursor(text) {
+        if (!cm) { textarea.setRangeText(text, textarea.selectionStart, textarea.selectionEnd, 'end'); schedulePreview(); return; }
+        var cur = cm.getCursor();
+        var line = cm.getLine(cur.line);
+        var trimmed = line.trim();
+        var indent = (line.match(/^\s*/) || [''])[0];
+        // inserting right after an opening tag like <div ...> -> nest one level deeper
+        if (/^<[a-z][^>]*>$/i.test(trimmed) && !/\/>$/.test(trimmed) && trimmed.indexOf('</') < 0) indent += '  ';
+        var lead = trimmed === '' ? '' : '\n' + indent;
+        var body = text.split('\n').map(function (l, i) { return (i === 0 && trimmed === '' ? '' : indent) + l; }).join('\n');
+        if (trimmed === '') {
+            cm.replaceRange('', { line: cur.line, ch: 0 }, { line: cur.line, ch: line.length });
+            cm.setCursor({ line: cur.line, ch: 0 });
+        } else {
+            cm.setCursor({ line: cur.line, ch: line.length });
+            body = body.replace(/^\s+/, '');
+            lead = '\n' + indent;
+        }
+        cm.replaceSelection(lead + body);
+        cm.focus();
+    }
+
+    // ---------- preview ----------
+    var frame = document.getElementById('tpl-preview');
+    var statusEl = document.getElementById('tpl-status');
+    var timer = null, seq = 0;
+    function schedulePreview() { clearTimeout(timer); statusEl.textContent = 'Updating…'; timer = setTimeout(renderPreview, 350); }
+    function frameDoc(html) {
+        return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+            '<script src="https://cdn.tailwindcss.com?plugins=forms"><\/script>' +
+            '<style>@font-face{font-family:Vazirmatn;src:url(' + JSON.stringify(FONT_URL) + ') format("truetype");font-weight:100 900}' +
+            'body{font-family:Vazirmatn,Inter,sans-serif}</style></head>' +
+            '<body class="min-h-full bg-gradient-to-br from-indigo-50 via-white to-purple-50 p-4 sm:p-8">' + html +
+            '<script>document.addEventListener("submit",function(e){e.preventDefault()});' +
+            'new ResizeObserver(function(){parent.postMessage({tplHeight:document.documentElement.scrollHeight},"*")}).observe(document.body);<\/script>' +
+            '</body></html>';
+    }
+    function renderPreview() {
+        var mine = ++seq;
+        fetch(PREVIEW_URL, {
+            method: 'POST', credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF },
+            body: JSON.stringify({ template: getValue() })
+        }).then(function (r) {
+            if (r.status === 401 || r.redirected) throw new Error('Your session expired - please log in again.');
+            if (!r.ok) throw new Error('Preview unavailable (' + r.status + ')');
+            return r.json();
+        }).then(function (data) {
+            if (mine !== seq) return;
+            frame.srcdoc = frameDoc(data.html);
+            showWarnings(data.warnings);
+            showFields(data.fields);
+            statusEl.textContent = 'Preview up to date';
+        }).catch(function (err) {
+            if (mine !== seq) return;
+            statusEl.textContent = err.message;
+        });
+    }
+    window.addEventListener('message', function (e) {
+        if (e.source === frame.contentWindow && e.data && e.data.tplHeight) {
+            frame.style.height = Math.max(540, Math.min(e.data.tplHeight + 8, 4000)) + 'px';
+        }
+    });
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    function showWarnings(list) {
+        var ul = document.getElementById('tpl-warnings');
+        if (!list.length) {
+            ul.innerHTML = '<li class="flex items-start gap-2 text-green-700"><i class="fas fa-circle-check mt-0.5"></i>Looks good - no problems found.</li>';
+            return;
+        }
+        ul.innerHTML = list.map(function (w) {
+            var tip = w.indexOf('Tip:') === 0;
+            return '<li class="flex items-start gap-2 ' + (tip ? 'text-gray-500' : 'text-amber-700') + '"><i class="fas ' +
+                (tip ? 'fa-lightbulb' : 'fa-triangle-exclamation') + ' mt-0.5"></i><span>' + esc(w) + '</span></li>';
+        }).join('');
+    }
+    function showFields(fields) {
+        document.getElementById('tpl-fields').innerHTML = fields.length ? fields.map(function (f) {
+            return '<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 text-xs font-mono" title="' + esc(f.type) + '">' +
+                esc(f.name) + (f.required ? '<span class="text-rose-600">*</span>' : '') + '</span>';
+        }).join('') : '';
+    }
+    document.querySelectorAll('.tpl-width').forEach(function (b) {
+        b.addEventListener('click', function () {
+            frame.style.width = b.dataset.width;
+            document.querySelectorAll('.tpl-width').forEach(function (o) {
+                o.classList.toggle('bg-gray-900', o === b); o.classList.toggle('text-white', o === b); o.classList.toggle('text-gray-600', o !== b);
+            });
+        });
+    });
+    document.getElementById('tpl-toggle-layout').addEventListener('click', function () {
+        document.getElementById('tpl-grid').classList.toggle('lg:grid-cols-2');
+        if (cm) cm.refresh();
+    });
+
+    // ---------- toolbar ----------
+    document.getElementById('tpl-undo').addEventListener('click', function () { if (cm) cm.undo(); });
+    document.getElementById('tpl-redo').addEventListener('click', function () { if (cm) cm.redo(); });
+    document.querySelectorAll('.tpl-wrap').forEach(function (b) {
+        b.addEventListener('click', function () {
+            if (!cm) return;
+            var t = b.dataset.wrap, sel = cm.getSelection() || 'text';
+            cm.replaceSelection('<' + t + '>' + sel + '</' + t + '>'); cm.focus();
+        });
+    });
+    document.getElementById('tpl-reset').addEventListener('click', function () {
+        if (confirm('Replace the current form with the standard application form? (You can undo with Ctrl+Z.)')) setValue(STANDARD);
+    });
+    var menu = document.getElementById('tpl-add-menu');
+    document.getElementById('tpl-add-btn').addEventListener('click', function (e) { e.stopPropagation(); menu.classList.toggle('hidden'); });
+    document.addEventListener('click', function (e) { if (!document.getElementById('tpl-add-wrap').contains(e.target)) menu.classList.add('hidden'); });
+
+    var SNIPPETS = {
+        heading: '<h2 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Section title</h2>',
+        paragraph: '<p class="text-sm text-gray-600">Write a short explanation for applicants here.</p>',
+        columns: '<div class="grid grid-cols-1 sm:grid-cols-2 gap-4">\n  <div>\n    <!-- left field -->\n  </div>\n  <div>\n    <!-- right field -->\n  </div>\n</div>',
+        divider: '<hr class="border-gray-200">'
+    };
+    document.querySelectorAll('.tpl-add-item').forEach(function (b) {
+        b.addEventListener('click', function () {
+            menu.classList.add('hidden');
+            if (b.dataset.snippet) { insertAtCursor(SNIPPETS[b.dataset.snippet]); return; }
+            openDialog(b.dataset.field, b.textContent.trim());
+        });
+    });
+
+    // ---------- field dialog ----------
+    var dlg = document.getElementById('tpl-field-dialog');
+    var $ = function (id) { return document.getElementById(id); };
+    var SECTIONS = {
+        text: ['label', 'name', 'placeholder', 'required'], email: ['label', 'name', 'placeholder', 'required'],
+        tel: ['label', 'name', 'placeholder', 'required'], url: ['label', 'name', 'placeholder', 'required'],
+        number: ['label', 'name', 'minmax', 'required'], date: ['label', 'name', 'required'],
+        textarea: ['label', 'name', 'placeholder', 'rows', 'required'], select: ['label', 'name', 'options', 'required'],
+        radio: ['label', 'name', 'options', 'required'], checkbox: ['label', 'name', 'options'],
+        file: ['label', 'name', 'filetypes', 'required'], acceptance: ['name', 'consent', 'required'],
+        quiz: ['name', 'quiz'], submit: ['button']
+    };
+    var DEFAULT_LABELS = { text: 'Full name', email: 'Email', tel: 'Phone', url: 'Portfolio / LinkedIn', number: 'Years of experience',
+        date: 'Available from', textarea: 'Tell us about yourself', select: 'Position', radio: 'Preferred shift',
+        checkbox: 'Skills', file: 'Resume / CV' };
+    var currentType = null, nameTouched = false;
+
+    function slug(s) {
+        var v = (s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
+        if (!/^[a-z]/.test(v)) v = currentType + (v ? '-' + v : '');
+        return v;
+    }
+    function usedNames() {
+        var names = {}, re = /\[\w+\*?\s+([^\s\]]+)/g, m, src = getValue();
+        while ((m = re.exec(src))) names[m[1]] = true;
+        return names;
+    }
+    function uniqueName(base) {
+        var names = usedNames(), n = base, i = 2;
+        while (names[n]) n = base + '-' + (i++);
+        return n;
+    }
+    function q(s) { return '"' + String(s).replace(/"/g, "'").replace(/[\[\]]/g, '') + '"'; }
+    function escHtml(s) { return esc(s); }
+
+    function buildSnippet() {
+        var t = currentType, req = $('dlg-required').checked && SECTIONS[t].indexOf('required') >= 0;
+        var name = ($('dlg-name').value.trim() || slug($('dlg-label').value) || t).replace(/[\s\[\]"]+/g, '-');
+        var label = $('dlg-label').value.trim();
+        var tag = t + (req ? '*' : '') + ' ' + name;
+        var opts = $('dlg-options').value.split('\n').map(function (s) { return s.trim(); }).filter(Boolean);
+        var field;
+        switch (t) {
+            case 'text': case 'email': case 'tel': case 'url':
+                field = '[' + tag + ' class="' + INPUT_CLS + '"' + ($('dlg-placeholder').value.trim() ? ' placeholder ' + q($('dlg-placeholder').value.trim()) : '') + ']';
+                break;
+            case 'number':
+                field = '[' + tag + ($('dlg-min').value !== '' ? ' min:' + Math.abs(parseInt($('dlg-min').value, 10) || 0) : '') +
+                    ($('dlg-max').value !== '' ? ' max:' + Math.abs(parseInt($('dlg-max').value, 10) || 0) : '') + ' class="' + INPUT_CLS + '"]';
+                break;
+            case 'date':
+                field = '[' + tag + ' class="' + INPUT_CLS + '"]'; break;
+            case 'textarea':
+                field = '[' + tag + ' rows:' + (parseInt($('dlg-rows').value, 10) || 5) + ' class="' + INPUT_CLS + '"' +
+                    ($('dlg-placeholder').value.trim() ? ' placeholder ' + q($('dlg-placeholder').value.trim()) : '') + ']';
+                break;
+            case 'select':
+                field = '[' + tag + ' include_blank class="' + INPUT_CLS + '" ' + opts.map(q).join(' ') + ']'; break;
+            case 'radio': case 'checkbox':
+                field = '[' + tag + ' ' + opts.map(q).join(' ') + ']'; break;
+            case 'file':
+                field = '[' + tag + ' filetypes:' + ($('dlg-filetypes').value.trim().replace(/[^a-z0-9|]/gi, '') || 'pdf') +
+                    ' class="w-full text-sm text-gray-700 file:mr-3 file:px-4 file:py-2 file:rounded-lg file:border-0 file:bg-indigo-50 file:text-indigo-700"]';
+                break;
+            case 'acceptance':
+                return '<label class="flex items-start gap-2 text-sm text-gray-700">\n  [' + tag + ']\n  <span>' +
+                    escHtml($('dlg-consent').value.trim() || 'I agree') + '</span>\n</label>';
+            case 'quiz':
+                return '<div>\n  [quiz ' + name + ' class="' + INPUT_CLS + '" ' + q($('dlg-question').value.trim() + '|' + $('dlg-answer').value.trim()) + ']\n</div>';
+            case 'submit':
+                return '<div class="pt-2">\n  [submit class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 transition" ' +
+                    q($('dlg-button').value.trim() || 'Submit') + ']\n</div>';
+        }
+        var labelHtml = label ? '  <label class="block text-sm font-medium text-gray-700 mb-1">' + escHtml(label) + (req ? ' *' : '') + '</label>\n' : '';
+        return '<div>\n' + labelHtml + '  ' + field + '\n</div>';
+    }
+    function refreshSnippet() { $('dlg-snippet').textContent = buildSnippet(); }
+
+    function openDialog(type, title) {
+        currentType = type; nameTouched = false;
+        $('tpl-dlg-title').textContent = 'Add field · ' + title;
+        dlg.querySelectorAll('[data-for]').forEach(function (el) {
+            el.classList.toggle('hidden', SECTIONS[type].indexOf(el.dataset.for) < 0);
+        });
+        $('dlg-label').value = DEFAULT_LABELS[type] || '';
+        $('dlg-placeholder').value = '';
+        $('dlg-required').checked = ['checkbox', 'quiz', 'submit'].indexOf(type) < 0;
+        var base = type === 'acceptance' ? 'consent' : type === 'quiz' ? 'quiz' : slug($('dlg-label').value);
+        $('dlg-name').value = uniqueName(base);
+        refreshSnippet();
+        if (dlg.showModal) dlg.showModal(); else dlg.setAttribute('open', '');
+        setTimeout(function () { (SECTIONS[type].indexOf('label') >= 0 ? $('dlg-label') : dlg.querySelector('input:not([type=hidden])')).focus(); }, 30);
+    }
+    $('dlg-label').addEventListener('input', function () {
+        if (!nameTouched) $('dlg-name').value = uniqueName(slug($('dlg-label').value));
+    });
+    $('dlg-name').addEventListener('input', function () { nameTouched = true; });
+    dlg.addEventListener('input', refreshSnippet);
+    dlg.addEventListener('change', refreshSnippet);
+    dlg.querySelectorAll('.tpl-dlg-close').forEach(function (b) { b.addEventListener('click', function () { dlg.close(); }); });
+    function insertFromDialog() {
+        var snippet = buildSnippet();
+        dlg.close();
+        insertAtCursor(snippet);
+    }
+    $('tpl-dlg-insert').addEventListener('click', insertFromDialog);
+    // The dialog sits inside the page's main form element: never let Enter submit the job ad
+    dlg.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') { e.preventDefault(); insertFromDialog(); }
+    });
+
+    renderPreview();
+})();
+</script>
